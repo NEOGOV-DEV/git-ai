@@ -51,10 +51,7 @@ fn run_status(json: bool) -> Result<(), GitAiError> {
     let ignore_patterns = effective_ignore_patterns(&repo, &[], &[]);
     let ignore_matcher = build_ignore_matcher(&ignore_patterns);
 
-    let default_user_name = match repo.config_get_str("user.name") {
-        Ok(Some(name)) if !name.trim().is_empty() => name,
-        _ => "unknown".to_string(),
-    };
+    let default_user_name = repo.git_author_identity().name_or_unknown();
 
     let _ = checkpoint::run(
         &repo,

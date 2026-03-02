@@ -671,16 +671,7 @@ fn handle_checkpoint(args: &[String]) {
                 );
 
                 // Get user name from this repo's config
-                let default_user_name = match repo.config_get_str("user.name") {
-                    Ok(Some(name)) if !name.trim().is_empty() => name,
-                    _ => {
-                        eprintln!(
-                            "Warning: git user.name not configured for {}. Using 'unknown'.",
-                            repo_workdir.display()
-                        );
-                        "unknown".to_string()
-                    }
-                };
+                let default_user_name = repo.git_author_identity().name_or_unknown();
 
                 // Create a modified agent_run_result with only this repo's files
                 let repo_agent_result = agent_run_result.as_ref().map(|r| {
@@ -800,14 +791,8 @@ fn handle_checkpoint(args: &[String]) {
         });
     }
 
-    // Get the current user name from git config
-    let default_user_name = match repo.config_get_str("user.name") {
-        Ok(Some(name)) if !name.trim().is_empty() => name,
-        _ => {
-            eprintln!("Warning: git user.name not configured. Using 'unknown' as author.");
-            "unknown".to_string()
-        }
-    };
+    // Get the current user name
+    let default_user_name = repo.git_author_identity().name_or_unknown();
 
     let checkpoint_start = std::time::Instant::now();
     let agent_tool = agent_run_result.as_ref().map(|r| r.agent_id.tool.clone());
@@ -900,10 +885,7 @@ fn handle_checkpoint(args: &[String]) {
                 continue;
             }
 
-            let ext_user_name = match ext_repo.config_get_str("user.name") {
-                Ok(Some(name)) if !name.trim().is_empty() => name,
-                _ => "unknown".to_string(),
-            };
+            let ext_user_name = ext_repo.git_author_identity().name_or_unknown();
 
             let mut modified = base_result.clone();
             modified.repo_working_dir = Some(repo_workdir.to_string_lossy().to_string());

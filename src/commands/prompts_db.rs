@@ -573,10 +573,7 @@ fn format_value(value: &rusqlite::types::Value) -> String {
 fn get_current_git_user_name() -> Option<String> {
     let current_dir = env::current_dir().ok()?.to_string_lossy().to_string();
     let repo = find_repository_in_path(&current_dir).ok()?;
-    repo.config_get_str("user.name")
-        .ok()
-        .flatten()
-        .filter(|s| !s.trim().is_empty())
+    repo.git_author_identity().name.clone()
 }
 
 /// Parse --since argument (number of days) into Unix timestamp
