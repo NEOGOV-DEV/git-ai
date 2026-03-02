@@ -107,27 +107,12 @@ pub fn get_commit_default_author(repo: &Repository, args: &[String]) -> String {
         return resolved_author.trim().to_string();
     }
 
-    // Use git_author_identity() which resolves via `git var GIT_COMMITTER_IDENT`
-    // (respects full precedence: env vars > config > system defaults)
+    // Use git_commit_author_identity() which resolves via `git var GIT_AUTHOR_IDENT`
+    // (respects full author precedence: GIT_AUTHOR_NAME/EMAIL env > user.name/email config > system defaults)
     // then falls back to git config user.name/user.email.
-    let identity = repo.git_author_identity();
-
-    // Check GIT_AUTHOR_NAME/GIT_AUTHOR_EMAIL env vars which take precedence for commits
-    // (git var GIT_COMMITTER_IDENT uses GIT_COMMITTER_* not GIT_AUTHOR_*)
-    let mut author_name = identity.name.clone();
-    let mut author_email = identity.email.clone();
-
-    if let Ok(name) = std::env::var("GIT_AUTHOR_NAME")
-        && !name.trim().is_empty()
-    {
-        author_name = Some(name.trim().to_string());
-    }
-
-    if let Ok(email) = std::env::var("GIT_AUTHOR_EMAIL")
-        && !email.trim().is_empty()
-    {
-        author_email = Some(email.trim().to_string());
-    }
+    let identity = repo.git_commit_author_identity();
+    let mut author_name = identity.name;
+    let mut author_email = identity.email;
 
     // Check EMAIL environment variable as fallback for both name and email
     if (author_name.is_none() || author_email.is_none())

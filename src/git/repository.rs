@@ -1454,7 +1454,7 @@ impl Repository {
             .map(|cfg| cfg.string(key).map(|cow| cow.to_string()))
     }
 
-    /// Get the effective git author identity for this repository.
+    /// Get the effective git user identity for this repository.
     ///
     /// Uses `git var GIT_COMMITTER_IDENT` which respects the full git identity precedence:
     /// `GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` env vars > `user.name`/`user.email` config >
@@ -1462,17 +1462,33 @@ impl Repository {
     ///
     /// Falls back to `git config user.name` / `user.email` if `git var` fails.
     /// The result is cached per Repository instance for performance.
+    ///
+    /// Use this for "who is the current user" lookups (blame, status, prompts, etc.).
+    /// For commit authorship specifically, use [`git_commit_author_identity`] instead.
     pub fn git_author_identity(&self) -> &GitAuthorIdentity {
         self.cached_author_identity
-            .get_or_init(|| self.resolve_git_author_identity())
+            .get_or_init(|| self.resolve_git_var_identity("GIT_COMMITTER_IDENT"))
     }
 
-    /// Internal: resolve the git author identity without caching.
-    fn resolve_git_author_identity(&self) -> GitAuthorIdentity {
-        // Try `git var GIT_COMMITTER_IDENT` first - this respects the full precedence chain
+    /// Get the effective git commit author identity for this repository.
+    ///
+    /// Uses `git var GIT_AUTHOR_IDENT` which respects:
+    /// `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL` env vars > `user.name`/`user.email` config >
+    /// system defaults.
+    ///
+    /// Falls back to `git config user.name` / `user.email` if `git var` fails.
+    ///
+    /// This is the correct method to use when resolving the commit **author** identity
+    /// (as opposed to committer), e.g. in commit hooks.
+    pub fn git_commit_author_identity(&self) -> GitAuthorIdentity {
+        self.resolve_git_var_identity("GIT_AUTHOR_IDENT")
+    }
+
+    /// Internal: resolve git identity via the specified `git var` variable.
+    fn resolve_git_var_identity(&self, git_var: &str) -> GitAuthorIdentity {
         let mut args = self.global_args_for_exec();
         args.push("var".to_string());
-        args.push("GIT_COMMITTER_IDENT".to_string());
+        args.push(git_var.to_string());
 
         if let Ok(output) = exec_git(&args)
             && let Ok(stdout) = String::from_utf8(output.stdout)
