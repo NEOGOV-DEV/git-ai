@@ -24,6 +24,7 @@ const DEFAULT_IGNORE_PATTERNS: &[&str] = &[
     "**/__snapshots__/**",
     "**/*.snap",
     "**/*.snap.new",
+    "**/drizzle/meta/**",
 ];
 
 #[derive(Clone, Debug)]
@@ -318,6 +319,30 @@ mod tests {
         assert!(defaults.contains(&"**/*.snap".to_string()));
         assert!(defaults.contains(&"Cargo.lock".to_string()));
         assert!(defaults.contains(&"*.generated.*".to_string()));
+    }
+
+    #[test]
+    fn defaults_ignore_drizzle_meta_files() {
+        let defaults = default_ignore_patterns();
+        let matcher = build_ignore_matcher(&defaults);
+
+        assert!(should_ignore_file_with_matcher(
+            "web/drizzle/meta/_journal.json",
+            &matcher
+        ));
+        assert!(should_ignore_file_with_matcher(
+            "web/drizzle/meta/0001_snapshot.json",
+            &matcher
+        ));
+        assert!(should_ignore_file_with_matcher(
+            "drizzle/meta/0032_snapshot.json",
+            &matcher
+        ));
+        // Should not ignore non-meta drizzle files
+        assert!(!should_ignore_file_with_matcher(
+            "drizzle/0001_initial.sql",
+            &matcher
+        ));
     }
 
     #[test]
