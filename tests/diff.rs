@@ -363,6 +363,28 @@ fn commit_after_staging_all(repo: &TestRepo, message: &str) -> NewCommit {
     repo.commit(message).expect("commit should succeed")
 }
 
+fn commit_with_git_og_as_author(
+    repo: &TestRepo,
+    file_path: &str,
+    lines: &[&str],
+    author_name: &str,
+    author_email: &str,
+    message: &str,
+) -> String {
+    write_lines(repo, file_path, lines);
+    repo.git_og(&["add", file_path])
+        .expect("git add via git_og should succeed");
+
+    let author = format!("{} <{}>", author_name, author_email);
+    repo.git_og_with_env(&["commit", "-m", message, "--author", &author], &[])
+        .expect("git commit via git_og should succeed");
+
+    repo.git_og(&["rev-parse", "HEAD"])
+        .expect("git rev-parse should succeed")
+        .trim()
+        .to_string()
+}
+
 fn diff_json(repo: &TestRepo, args: &[&str]) -> Value {
     let output = repo.git_ai(args).expect("git-ai diff should succeed");
     serde_json::from_str(&output).expect("diff JSON should parse")
@@ -1413,6 +1435,101 @@ fn test_diff_json_include_stats_exact_human_landed_with_ai_generated() {
 }
 
 #[test]
+fn test_diff_json_include_stats_blame_deletions_devin_added_prompts_only() {
+    let repo = TestRepo::new();
+
+    write_lines(
+        &repo,
+        "blame_deletion_stats.txt",
+        &["base-1", "base-2", "base-3"],
+    );
+    checkpoint_human(&repo);
+    let _base = commit_after_staging_all(&repo, "base");
+
+    // Commit A: codex prompt that will appear only in deleted hunks of commit B.
+    write_lines(
+        &repo,
+        "blame_deletion_stats.txt",
+        &["base-1", "ai-temp-2", "ai-temp-3"],
+    );
+    checkpoint_agent_v1(
+        &repo,
+        "blame_deletion_stats.txt",
+        "codex",
+        "o3",
+        "blame-deletion-source",
+        "ai replacement",
+    );
+    let _source_commit = commit_after_staging_all(&repo, "codex source");
+
+    // Commit B: background/synthetic agent commit authored as Devin bot (no authorship note).
+    // It deletes codex lines and adds new Devin lines.
+    let devin_commit_sha = commit_with_git_og_as_author(
+        &repo,
+        "blame_deletion_stats.txt",
+        &["base-1", "devin-final-4", "devin-final-5"],
+        "devin-ai-integration[bot]",
+        "158243242+devin-ai-integration[bot]@users.noreply.github.com",
+        "devin cleanup",
+    );
+
+    let diff = diff_json(
+        &repo,
+        &[
+            "diff",
+            &devin_commit_sha,
+            "--json",
+            "--include-stats",
+            "--blame-deletions",
+        ],
+    );
+
+    let prompts = diff["prompts"]
+        .as_object()
+        .expect("prompts should be object");
+    let prompt_tools: BTreeSet<String> = prompts
+        .values()
+        .map(|prompt| {
+            prompt["agent_id"]["tool"]
+                .as_str()
+                .unwrap_or("")
+                .to_string()
+        })
+        .collect();
+    assert_eq!(
+        prompt_tools,
+        BTreeSet::from(["codex".to_string(), "devin".to_string()]),
+        "prompt payload should include deleted-origin codex plus added-hunk Devin prompt records"
+    );
+
+    let commit_stats = diff
+        .get("commit_stats")
+        .expect("commit_stats should be present with --include-stats");
+    let breakdown = commit_stats["tool_model_breakdown"]
+        .as_object()
+        .expect("tool_model_breakdown should be an object");
+    assert!(
+        breakdown.keys().any(|key| key.starts_with("devin::")),
+        "expected Devin in tool_model_breakdown, got: {:?}",
+        breakdown.keys().collect::<Vec<_>>()
+    );
+    assert!(
+        !breakdown.keys().any(|key| key.starts_with("codex::")),
+        "deleted-origin codex prompt should not contribute to commit_stats breakdown"
+    );
+
+    assert_eq!(commit_stats["ai_lines_added"], serde_json::json!(2));
+    assert_eq!(commit_stats["git_lines_added"], serde_json::json!(2));
+    assert_eq!(commit_stats["git_lines_deleted"], serde_json::json!(2));
+    assert_eq!(commit_stats["human_lines_added"], serde_json::json!(0));
+    assert_eq!(commit_stats["unknown_lines_added"], serde_json::json!(0));
+    assert!(
+        commit_stats["ai_lines_generated"].as_u64().unwrap_or(0) > 0,
+        "Devin synthetic prompt should still contribute generated stats"
+    );
+}
+
+#[test]
 fn test_diff_json_rename_only_has_no_hunks_and_zero_stats() {
     let repo = TestRepo::new();
 
@@ -2375,6 +2492,23 @@ fn test_diff_json_deleted_hunks_same_content_but_different_origins() {
     assert_eq!(commit_keys(&json), expected_commit_keys);
 }
 
+#[test]
+fn test_diff_json_commit_author_is_full_ident() {
+    let repo = TestRepo::new();
+    let mut file = repo.filename("author_ident.txt");
+    file.set_contents(lines!["base".human()]);
+    repo.stage_all_and_commit("Initial").unwrap();
+
+    file.set_contents(lines!["base".human(), "AI line".ai()]);
+    let commit = repo.stage_all_and_commit("Add AI line").unwrap();
+
+    let json = diff_json(&repo, &["diff", &commit.commit_sha, "--json"]);
+    let author = json["commits"][&commit.commit_sha]["author"]
+        .as_str()
+        .expect("commit author should be a string");
+    assert_eq!(author, "Test User <test@example.com>");
+}
+
 reuse_tests_in_worktree!(
     test_diff_single_commit,
     test_diff_commit_range,
@@ -2394,6 +2528,7 @@ reuse_tests_in_worktree!(
     test_diff_json_include_stats_exact_single_model_counts,
     test_diff_json_include_stats_exact_multi_model_with_non_landing_prompt,
     test_diff_json_include_stats_exact_human_landed_with_ai_generated,
+    test_diff_json_include_stats_blame_deletions_devin_added_prompts_only,
     test_diff_json_rename_only_has_no_hunks_and_zero_stats,
     test_diff_json_rename_with_ai_edit_exact_stats,
     test_diff_json_include_stats_rejects_commit_ranges,
@@ -2412,4 +2547,5 @@ reuse_tests_in_worktree!(
     test_diff_json_deleted_hunks_exact_replacement_from_known_origin_commit,
     test_diff_json_deleted_hunks_strict_mixed_origins_and_contiguous_segments,
     test_diff_json_deleted_hunks_same_content_but_different_origins,
+    test_diff_json_commit_author_is_full_ident,
 );

@@ -361,6 +361,14 @@ pub fn execute_diff(repo: &Repository, parsed: ParsedDiffArgs) -> Result<String,
                         &mut stats_prompts,
                     );
                 }
+                if is_single_commit && parsed.options.blame_deletions {
+                    filter_stats_prompts_for_blame_deletions(
+                        repo,
+                        &to_commit,
+                        &artifacts,
+                        &mut stats_prompts,
+                    );
+                }
                 Some(calculate_diff_commit_stats(&artifacts, &stats_prompts))
             } else {
                 None
@@ -1252,17 +1260,19 @@ fn load_commit_metadata(
     args.push("-s".to_string());
     args.push("--no-notes".to_string());
     args.push("--encoding=UTF-8".to_string());
-    args.push("--format=%an <%ae>%x00%aI%x00%s%x00%B".to_string());
+    args.push("--format=%an%x00%ae%x00%aI%x00%s%x00%B".to_string());
     args.push(commit_sha.to_string());
 
     let output = exec_git_with_profile(&args, InternalGitProfile::General)?;
     let stdout = String::from_utf8(output.stdout)
         .map_err(|e| GitAiError::Generic(format!("Failed to parse commit metadata: {}", e)))?;
-    let mut parts = stdout.splitn(4, '\0');
-    let author = parts.next().unwrap_or("").trim().to_string();
+    let mut parts = stdout.splitn(5, '\0');
+    let author_name = parts.next().unwrap_or("").trim();
+    let author_email = parts.next().unwrap_or("").trim();
     let authored_time = parts.next().unwrap_or("").trim().to_string();
     let msg = parts.next().unwrap_or("").trim().to_string();
     let full_msg = parts.next().unwrap_or("").trim_end().to_string();
+    let author = format_git_ident(author_name, author_email);
     let authorship_note = show_authorship_note(repo, commit_sha);
 
     Ok(DiffCommitMetadata {
@@ -1272,6 +1282,18 @@ fn load_commit_metadata(
         author,
         authorship_note,
     })
+}
+
+fn format_git_ident(name: &str, email: &str) -> String {
+    if !name.is_empty() && !email.is_empty() {
+        format!("{} <{}>", name, email)
+    } else if !name.is_empty() {
+        name.to_string()
+    } else if !email.is_empty() {
+        format!("<{}>", email)
+    } else {
+        String::new()
+    }
 }
 
 fn merge_missing_prompts_from_authorship_note(
@@ -1284,6 +1306,32 @@ fn merge_missing_prompts_from_authorship_note(
             prompts.entry(prompt_id).or_insert(prompt_record);
         }
     }
+}
+
+fn filter_stats_prompts_for_blame_deletions(
+    repo: &Repository,
+    commit_sha: &str,
+    artifacts: &DiffBuildArtifacts,
+    prompts: &mut BTreeMap<String, PromptRecord>,
+) {
+    let mut keep_prompt_ids = prompt_ids_from_added_hunks(artifacts);
+    keep_prompt_ids.extend(prompt_ids_from_authorship_note(repo, commit_sha));
+    prompts.retain(|prompt_id, _| keep_prompt_ids.contains(prompt_id));
+}
+
+fn prompt_ids_from_added_hunks(artifacts: &DiffBuildArtifacts) -> HashSet<String> {
+    artifacts
+        .json_hunks
+        .iter()
+        .filter(|hunk| hunk.hunk_kind == "addition")
+        .filter_map(|hunk| hunk.prompt_id.clone())
+        .collect()
+}
+
+fn prompt_ids_from_authorship_note(repo: &Repository, commit_sha: &str) -> HashSet<String> {
+    get_authorship(repo, commit_sha)
+        .map(|authorship_log| authorship_log.metadata.prompts.into_keys().collect())
+        .unwrap_or_default()
 }
 
 fn line_range_len(range: &LineRange) -> u32 {
@@ -2098,6 +2146,24 @@ mod tests {
     fn test_format_attribution_no_data() {
         let attr = Attribution::NoData;
         assert_eq!(format_attribution(&attr), "[no-data]");
+    }
+
+    #[test]
+    fn test_format_git_ident_prefers_full_ident() {
+        assert_eq!(
+            format_git_ident("Test User", "test@example.com"),
+            "Test User <test@example.com>"
+        );
+    }
+
+    #[test]
+    fn test_format_git_ident_handles_missing_parts() {
+        assert_eq!(format_git_ident("Test User", ""), "Test User");
+        assert_eq!(
+            format_git_ident("", "test@example.com"),
+            "<test@example.com>"
+        );
+        assert_eq!(format_git_ident("", ""), "");
     }
 
     #[test]
