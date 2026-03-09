@@ -42,6 +42,12 @@ pub enum CiRunResult {
     NoAuthorshipAvailable,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CiRunOptions {
+    pub skip_fetch_notes: bool,
+    pub skip_fetch_base: bool,
+}
+
 #[derive(Debug)]
 pub struct CiContext {
     pub repo: Repository,
@@ -61,6 +67,10 @@ impl CiContext {
     }
 
     pub fn run(&self) -> Result<CiRunResult, GitAiError> {
+        self.run_with_options(CiRunOptions::default())
+    }
+
+    pub fn run_with_options(&self, options: CiRunOptions) -> Result<CiRunResult, GitAiError> {
         match &self.event {
             CiEvent::Merge {
                 merge_commit_sha,
@@ -71,10 +81,14 @@ impl CiContext {
             } => {
                 println!("Working repository is in {}", self.repo.path().display());
 
-                println!("Fetching authorship history");
-                // Ensure we have the full authorship history before checking for existing notes
-                fetch_authorship_notes(&self.repo, "origin")?;
-                println!("Fetched authorship history");
+                if options.skip_fetch_notes {
+                    println!("Skipping authorship history fetch");
+                } else {
+                    println!("Fetching authorship history");
+                    // Ensure we have the full authorship history before checking for existing notes
+                    fetch_authorship_notes(&self.repo, "origin")?;
+                    println!("Fetched authorship history");
+                }
 
                 // Check if authorship already exists for this commit
                 match get_reference_as_authorship_log_v3(&self.repo, merge_commit_sha) {
@@ -114,15 +128,25 @@ impl CiContext {
                     "Rewriting authorship for {} -> {} (squash or rebase-like merge)",
                     head_sha, merge_commit_sha
                 );
-                println!("Fetching base branch {}", base_ref);
-                // Ensure we have all the required commits from the base branch
-                self.repo.fetch_branch(base_ref, "origin").map_err(|e| {
-                    GitAiError::Generic(format!(
-                        "Failed to fetch base branch '{}': {}",
-                        base_ref, e
-                    ))
-                })?;
-                println!("Fetched base branch.");
+                if options.skip_fetch_base {
+                    println!("Skipping base branch fetch for {}", base_ref);
+                    self.repo.revparse_single(base_ref).map_err(|e| {
+                        GitAiError::Generic(format!(
+                            "Failed to resolve base ref '{}' locally while --skip-fetch-base is set: {}",
+                            base_ref, e
+                        ))
+                    })?;
+                } else {
+                    println!("Fetching base branch {}", base_ref);
+                    // Ensure we have all the required commits from the base branch
+                    self.repo.fetch_branch(base_ref, "origin").map_err(|e| {
+                        GitAiError::Generic(format!(
+                            "Failed to fetch base branch '{}': {}",
+                            base_ref, e
+                        ))
+                    })?;
+                    println!("Fetched base branch.");
+                }
 
                 // Detect squash vs rebase merge by counting commits
                 // For squash: N original commits → 1 merge commit

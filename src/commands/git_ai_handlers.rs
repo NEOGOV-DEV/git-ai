@@ -16,10 +16,12 @@ use crate::commands::checkpoint_agent::opencode_preset::OpenCodePreset;
 use crate::config;
 use crate::git::find_repository;
 use crate::git::find_repository_in_path;
-use crate::git::repository::{CommitRange, group_files_by_repository};
+use crate::git::repository::{CommitRange, Repository, group_files_by_repository};
+use crate::git::sync_authorship::{NotesExistence, fetch_authorship_notes, push_authorship_notes};
 use crate::observability::wrapper_performance_targets::log_performance_for_checkpoint;
 use crate::observability::{self, log_message};
 use crate::utils::is_interactive_terminal;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::io::IsTerminal;
 use std::io::Read;
@@ -169,6 +171,18 @@ pub fn handle_git_ai(args: &[String]) {
         "continue" => {
             commands::continue_session::handle_continue(&args[1..]);
         }
+        "effective-ignore-patterns" => {
+            handle_effective_ignore_patterns_internal(&args[1..]);
+        }
+        "blame-analysis" => {
+            handle_blame_analysis_internal(&args[1..]);
+        }
+        "fetch-authorship-notes" | "fetch_authorship_notes" => {
+            handle_fetch_authorship_notes_internal(&args[1..]);
+        }
+        "push-authorship-notes" | "push_authorship_notes" => {
+            handle_push_authorship_notes_internal(&args[1..]);
+        }
         #[cfg(debug_assertions)]
         "show-transcript" => {
             handle_show_transcript(&args[1..]);
@@ -200,6 +214,13 @@ fn print_help() {
     eprintln!("  diff <commit|range>  Show diff with AI authorship annotations");
     eprintln!("    <commit>              Diff from commit's parent to commit");
     eprintln!("    <commit1>..<commit2>  Diff between two commits");
+    eprintln!("    --json                 Output in JSON format");
+    eprintln!(
+        "    --include-stats        Include commit_stats in JSON output (single commit only)"
+    );
+    eprintln!(
+        "    --all-prompts          Include all prompts from commit note in JSON output (single commit only)"
+    );
     eprintln!("  stats [commit]     Show AI authorship statistics for a commit");
     eprintln!("    --json                 Output in JSON format");
     eprintln!("  status             Show uncommitted AI authorship status (debug)");
@@ -964,6 +985,184 @@ fn strip_utf8_bom(input: String) -> String {
     } else {
         input
     }
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct EffectiveIgnorePatternsRequest {
+    user_patterns: Vec<String>,
+    extra_patterns: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct EffectiveIgnorePatternsResponse {
+    patterns: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BlameAnalysisRequest {
+    file_path: String,
+    #[serde(default)]
+    options: commands::blame::GitAiBlameOptions,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AuthorshipRemoteRequest {
+    remote_name: String,
+}
+
+#[derive(Debug, Serialize)]
+struct FetchAuthorshipNotesResponse {
+    notes_existence: String,
+}
+
+#[derive(Debug, Serialize)]
+struct PushAuthorshipNotesResponse {
+    ok: bool,
+}
+
+fn parse_machine_json_arg(args: &[String], command: &str) -> Result<String, String> {
+    if args.len() != 2 || args[0] != "--json" {
+        return Err(format!("Usage: git-ai {} --json '<json-payload>'", command));
+    }
+
+    let payload = strip_utf8_bom(args[1].clone());
+    if payload.trim().is_empty() {
+        return Err("JSON payload cannot be empty".to_string());
+    }
+
+    Ok(payload)
+}
+
+fn emit_machine_json_error(message: impl AsRef<str>) -> ! {
+    let payload = serde_json::json!({ "error": message.as_ref() });
+    if let Ok(json) = serde_json::to_string(&payload) {
+        eprintln!("{}", json);
+    } else {
+        eprintln!(r#"{{"error":"failed to serialize error payload"}}"#);
+    }
+    std::process::exit(1);
+}
+
+fn print_machine_json(value: &serde_json::Value) {
+    match serde_json::to_string(value) {
+        Ok(json) => println!("{}", json),
+        Err(e) => emit_machine_json_error(format!("Failed to serialize JSON output: {}", e)),
+    }
+}
+
+fn disable_debug_logs_for_machine_command() {
+    // SAFETY: git-ai command handlers run on the main thread and mutate process env
+    // before spawning any worker threads for these internal machine commands.
+    unsafe {
+        std::env::set_var("GIT_AI_DEBUG", "0");
+        std::env::remove_var("GIT_AI_DEBUG_PERFORMANCE");
+    }
+}
+
+fn parse_authorship_remote_request(
+    args: &[String],
+    command: &str,
+) -> (Repository, AuthorshipRemoteRequest) {
+    let payload =
+        parse_machine_json_arg(args, command).unwrap_or_else(|msg| emit_machine_json_error(msg));
+
+    let request: AuthorshipRemoteRequest = serde_json::from_str(&payload)
+        .unwrap_or_else(|e| emit_machine_json_error(format!("Invalid JSON payload: {}", e)));
+
+    if request.remote_name.trim().is_empty() {
+        emit_machine_json_error("remote_name cannot be empty");
+    }
+
+    let repo = find_repository(&Vec::<String>::new())
+        .unwrap_or_else(|e| emit_machine_json_error(format!("Failed to find repository: {}", e)));
+
+    (repo, request)
+}
+
+fn notes_existence_label(existence: NotesExistence) -> &'static str {
+    match existence {
+        NotesExistence::Found => "found",
+        NotesExistence::NotFound => "not_found",
+    }
+}
+
+fn handle_effective_ignore_patterns_internal(args: &[String]) {
+    let payload = parse_machine_json_arg(args, "effective-ignore-patterns")
+        .unwrap_or_else(|msg| emit_machine_json_error(msg));
+
+    let request: EffectiveIgnorePatternsRequest = serde_json::from_str(&payload)
+        .unwrap_or_else(|e| emit_machine_json_error(format!("Invalid JSON payload: {}", e)));
+
+    let repo = find_repository(&Vec::<String>::new())
+        .unwrap_or_else(|e| emit_machine_json_error(format!("Failed to find repository: {}", e)));
+
+    let response = EffectiveIgnorePatternsResponse {
+        patterns: effective_ignore_patterns(&repo, &request.user_patterns, &request.extra_patterns),
+    };
+
+    let response_value = serde_json::to_value(response).unwrap_or_else(|e| {
+        emit_machine_json_error(format!("Failed to serialize command response: {}", e))
+    });
+    print_machine_json(&response_value);
+}
+
+fn handle_blame_analysis_internal(args: &[String]) {
+    let payload = parse_machine_json_arg(args, "blame-analysis")
+        .unwrap_or_else(|msg| emit_machine_json_error(msg));
+
+    let request: BlameAnalysisRequest = serde_json::from_str(&payload)
+        .unwrap_or_else(|e| emit_machine_json_error(format!("Invalid JSON payload: {}", e)));
+
+    if request.file_path.trim().is_empty() {
+        emit_machine_json_error("file_path cannot be empty");
+    }
+
+    let repo = find_repository(&Vec::<String>::new())
+        .unwrap_or_else(|e| emit_machine_json_error(format!("Failed to find repository: {}", e)));
+
+    let analysis = repo
+        .blame_analysis(&request.file_path, &request.options)
+        .unwrap_or_else(|e| emit_machine_json_error(format!("blame_analysis failed: {}", e)));
+
+    let response_value = serde_json::to_value(analysis).unwrap_or_else(|e| {
+        emit_machine_json_error(format!("Failed to serialize command response: {}", e))
+    });
+    print_machine_json(&response_value);
+}
+
+fn handle_fetch_authorship_notes_internal(args: &[String]) {
+    disable_debug_logs_for_machine_command();
+    let (repo, request) = parse_authorship_remote_request(args, "fetch-authorship-notes");
+
+    let notes_existence = fetch_authorship_notes(&repo, &request.remote_name).unwrap_or_else(|e| {
+        emit_machine_json_error(format!("fetch_authorship_notes failed: {}", e))
+    });
+
+    let response = FetchAuthorshipNotesResponse {
+        notes_existence: notes_existence_label(notes_existence).to_string(),
+    };
+    let response_value = serde_json::to_value(response).unwrap_or_else(|e| {
+        emit_machine_json_error(format!("Failed to serialize command response: {}", e))
+    });
+    print_machine_json(&response_value);
+}
+
+fn handle_push_authorship_notes_internal(args: &[String]) {
+    disable_debug_logs_for_machine_command();
+    let (repo, request) = parse_authorship_remote_request(args, "push-authorship-notes");
+
+    push_authorship_notes(&repo, &request.remote_name).unwrap_or_else(|e| {
+        emit_machine_json_error(format!("push_authorship_notes failed: {}", e))
+    });
+
+    let response = PushAuthorshipNotesResponse { ok: true };
+    let response_value = serde_json::to_value(response).unwrap_or_else(|e| {
+        emit_machine_json_error(format!("Failed to serialize command response: {}", e))
+    });
+    print_machine_json(&response_value);
 }
 
 fn handle_ai_blame(args: &[String]) {
