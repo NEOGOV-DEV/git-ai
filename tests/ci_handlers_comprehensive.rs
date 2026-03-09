@@ -196,6 +196,16 @@ fn test_ci_required_flags_for_merge() {
     assert!(required_flags.contains(&"--base-sha"));
 }
 
+#[test]
+fn test_ci_optional_skip_fetch_flags_for_merge() {
+    let optional_flags = vec!["--skip-fetch-notes", "--skip-fetch-base", "--skip-fetch"];
+
+    assert_eq!(optional_flags.len(), 3);
+    assert!(optional_flags.contains(&"--skip-fetch-notes"));
+    assert!(optional_flags.contains(&"--skip-fetch-base"));
+    assert!(optional_flags.contains(&"--skip-fetch"));
+}
+
 // ==============================================================================
 // Subcommand Structure Tests
 // ==============================================================================
@@ -390,6 +400,7 @@ reuse_tests_in_worktree!(
     test_no_cleanup_flag_detection,
     test_ci_missing_flag_value_detection,
     test_ci_required_flags_for_merge,
+    test_ci_optional_skip_fetch_flags_for_merge,
     test_ci_subcommand_classification,
     test_ci_github_subcommands,
     test_ci_gitlab_subcommands,
