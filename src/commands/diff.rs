@@ -486,8 +486,7 @@ fn get_diff_text(
     args.push(to.to_string());
 
     let output = exec_git_with_profile(&args, InternalGitProfile::PatchParse)?;
-    String::from_utf8(output.stdout)
-        .map_err(|e| GitAiError::Generic(format!("Failed to parse diff output: {}", e)))
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn parse_diff_hunks(diff_text: &str) -> Result<Vec<DiffHunk>, GitAiError> {
@@ -1579,7 +1578,21 @@ fn get_diff_sections_by_file(
     }
 
     flush_section(&mut sections, &mut current_file, &mut current_diff);
+
+    // Exclude binary files from diff output — git emits "Binary files ... differ"
+    // lines for these, and they carry no useful text hunks.
+    sections.retain(|(_, section_text)| !is_binary_diff_section(section_text));
+
     Ok(sections)
+}
+
+/// Returns `true` when a diff section produced by git describes a binary file.
+/// Git emits a line starting with "Binary files" instead of unified-diff hunks
+/// for files it considers binary.
+fn is_binary_diff_section(section_text: &str) -> bool {
+    section_text
+        .lines()
+        .any(|line| line.starts_with("Binary files"))
 }
 
 // ============================================================================
@@ -2505,5 +2518,17 @@ index abc123..def456 100644
         assert_eq!(breakdown.ai_lines_added, 1);
         assert_eq!(breakdown.ai_lines_generated, 5);
         assert_eq!(breakdown.ai_deletions_generated, 2);
+    }
+
+    #[test]
+    fn test_is_binary_diff_section_detects_binary() {
+        let section = "diff --git a/image.png b/image.png\nnew file mode 100644\nindex 0000000..abc1234\nBinary files /dev/null and b/image.png differ\n";
+        assert!(is_binary_diff_section(section));
+    }
+
+    #[test]
+    fn test_is_binary_diff_section_allows_text() {
+        let section = "diff --git a/src/main.rs b/src/main.rs\nindex abc1234..def5678 100644\n--- a/src/main.rs\n+++ b/src/main.rs\n@@ -1,1 +1,2 @@\n fn main() {}\n+fn added() {}\n";
+        assert!(!is_binary_diff_section(section));
     }
 }
