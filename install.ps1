@@ -256,9 +256,47 @@ function Get-Architecture {
     }
 }
 
-# Ensure $PathToAdd is on the User PATH (appended if absent). No Machine PATH,
-# no admin required, no positioning logic.
-function Set-PathEnsureContains {
+function Get-StdGitPath {
+    $cmd = Get-Command git.exe -ErrorAction SilentlyContinue
+    $gitPath = $null
+    if ($cmd -and $cmd.Path) {
+        # Ensure we never return a path for git that contains git-ai (recursive)
+        if ($cmd.Path -notmatch "git-ai") {
+            $gitPath = $cmd.Path
+        }
+    }
+
+    # If detection failed or was our own shim, try to recover from saved config
+    if (-not $gitPath) {
+        try {
+            $cfgPath = Join-Path $env:ProgramFiles "git-ai\config.json"
+            if (Test-Path -LiteralPath $cfgPath) {
+                $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
+                if ($cfg -and $cfg.git_path -and ($cfg.git_path -notmatch 'git-ai') -and (Test-Path -LiteralPath $cfg.git_path)) {
+                    $gitPath = $cfg.git_path
+                }
+            }
+        } catch { }
+    }
+
+    # If still not found, fail with a clear message
+    if (-not $gitPath) {
+        Write-ErrorAndExit "Could not detect a standard git binary on PATH. Please ensure you have Git installed and available on your PATH. If you believe this is a bug with the installer, please file an issue at https://github.com/git-ai-project/git-ai/issues."
+    }
+
+    try {
+        & $gitPath --version | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'bad' }
+    } catch {
+        Write-ErrorAndExit "Detected git at $gitPath is not usable (--version failed). Please ensure you have Git installed and available on your PATH. If you believe this is a bug with the installer, please file an issue at https://github.com/git-ai-project/git-ai/issues."
+    }
+
+    return $gitPath
+}
+
+# Ensure $PathToAdd is inserted before any PATH entry that contains "git" (case-insensitive)
+# Updates Machine (system) PATH; if not elevated, emits a prominent error with instructions
+function Set-PathPrependBeforeGit {
     param(
         [Parameter(Mandatory = $true)][string]$PathToAdd
     )
@@ -339,8 +377,8 @@ if (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_LOCAL_BINARY)) {
     $downloadUrlNoExt = "https://github.com/$Repo/releases/latest/download/$binaryName"
 }
 
-# Install directory: %USERPROFILE%\.git-ai\bin
-$installDir = Join-Path $HOME ".git-ai\bin"
+# Install directory: %ProgramFiles%\git-ai\bin
+$installDir = Join-Path $env:ProgramFiles "git-ai\bin"
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
 Write-Host ("Downloading git-ai (release: {0})..." -f $releaseTag)
@@ -476,8 +514,10 @@ $gitBashAlreadyConfigured = $false
 try {
     $bashrcPath = Join-Path $HOME '.bashrc'
     $bashProfilePath = Join-Path $HOME '.bash_profile'
-    $pathCmd = 'export PATH="$HOME/.git-ai/bin:$PATH"'
-    $markerString = '.git-ai/bin'
+    $driveLetter = $installDir.Substring(0, 1).ToLower()
+    $msys2InstallDir = '/' + $driveLetter + ($installDir.Substring(2) -replace '\\', '/')
+    $pathCmd = "export PATH=`"$msys2InstallDir`:`$PATH`""
+    $markerString = 'git-ai/bin'
 
     # Detect if Git Bash is installed
     $gitBashInstalled = $false
@@ -531,6 +571,26 @@ if ($gitBashConfigured) {
     Write-Success "Successfully configured Git Bash ($targetBashConfig)"
 } elseif ($gitBashAlreadyConfigured) {
     Write-Success "Git Bash already configured ($targetBashConfig)"
+}
+
+# Write JSON config at %USERPROFILE%\.git-ai\config.json (only if it doesn't exist)
+try {
+    $configDir = Join-Path $env:ProgramFiles 'git-ai'
+    $configJsonPath = Join-Path $configDir 'config.json'
+    New-Item -ItemType Directory -Force -Path $configDir | Out-Null
+
+    if (-not (Test-Path -LiteralPath $configJsonPath)) {
+        $cfg = @{
+            git_path = $stdGitPath
+            feature_flags = @{
+                async_mode = $true
+            }
+        } | ConvertTo-Json -Depth 3 -Compress
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($configJsonPath, $cfg, $utf8NoBom)
+    }
+} catch {
+    Write-Host "Warning: Failed to write config.json: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 Write-Host 'Close and reopen your terminal and IDE sessions to use git-ai.' -ForegroundColor Yellow
