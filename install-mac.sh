@@ -236,22 +236,24 @@ if [ -n "${GIT_AI_LOCAL_BINARY:-}" ]; then
 elif [ "$PINNED_VERSION" != "__VERSION_PLACEHOLDER__" ]; then
     # Version-pinned install script from a release
     RELEASE_TAG="$PINNED_VERSION"
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${BINARY_NAME}"
+    DOWNLOAD_URL="https://usegitai.com/worker/releases/download/${RELEASE_TAG}/${BINARY_NAME}"
 elif [ -n "${GIT_AI_RELEASE_TAG:-}" ] && [ "${GIT_AI_RELEASE_TAG:-}" != "latest" ]; then
     # Environment variable override
     RELEASE_TAG="$GIT_AI_RELEASE_TAG"
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${BINARY_NAME}"
+    DOWNLOAD_URL="https://usegitai.com/worker/releases/download/${RELEASE_TAG}/${BINARY_NAME}"
 else
     # Default to latest
     RELEASE_TAG="latest"
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}"
+    DOWNLOAD_URL="https://usegitai.com/worker/releases/download/latest/${BINARY_NAME}"
 fi
 
 # Install into the user's bin directory ~/.git-ai/bin
-INSTALL_DIR="$HOME/.git-ai/bin"
+INSTALL_DIR="/Users/$CURRENT_USER/.git-ai/bin"
 
 # Create directory if it doesn't exist
 mkdir -p "$INSTALL_DIR"
+chown -R "$CURRENT_USER" "$HOME/.git-ai"
+
 
 # Download and install
 TMP_FILE="${INSTALL_DIR}/git-ai.tmp.$$"
@@ -292,6 +294,7 @@ ln -sf "$STD_GIT_PATH" "${INSTALL_DIR}/git-og"
 if [ "$OS" = "macos" ]; then
     xattr -d com.apple.quarantine "${INSTALL_DIR}/git-ai" 2>/dev/null || true
 fi
+chown "$CURRENT_USER" "${INSTALL_DIR}/git-ai"
 
 success "Successfully installed git-ai into ${INSTALL_DIR}"
 success "You can now run 'git-ai' from your terminal"
@@ -309,8 +312,8 @@ if [ -n "${INSTALL_NONCE:-}" ] && [ -n "${API_BASE:-}" ]; then
 fi
 
 echo "Setting up IDE/agent hooks..."
-if ! ${INSTALL_DIR}/git-ai install-hooks; then
-    warn "Warning: Failed to set up IDE/agent hooks. Please try running 'git-ai install-hooks' manually."
+if ! su -l "$CURRENT_USER" -c "'${INSTALL_DIR}/git-ai' install-hooks"; then
+    warn "Failed to set up IDE/agent hooks via su. Attempting manual ownership fix..."
 else
     success "Successfully set up IDE/agent hooks"
 fi
@@ -409,3 +412,8 @@ fi
 
 # Ensure the developer owns their new git-ai configuration
 chown -R "$CURRENT_USER" "$HOME/.git-ai"
+if [ -d "$HOME/.claude" ]; then
+    chown -R "$CURRENT_USER" "$HOME/.claude"
+fi
+
+success "Installation complete for $CURRENT_USER."
