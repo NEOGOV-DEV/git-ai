@@ -1,0 +1,23 @@
+install-mac.sh
+  a3d301a7a56e78da 303,309,410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "85d266d1b3c3c5db1b177720d402dbaff332072b",
+  "prompts": {
+    "a3d301a7a56e78da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "296890a7-29d2-42a1-a2bd-f98d28923432",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
