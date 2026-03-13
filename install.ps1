@@ -266,7 +266,20 @@ function Get-StdGitPath {
         }
     }
 
-    # If detection failed or was our own shim, try to recover from saved config
+    # If detection failed or was our own shim, try to recover from saved config in the user's home directory (legacy location)
+    if (-not $gitPath) {
+        try {
+            $cfgPath = Join-Path $HOME "git-ai\config.json"
+            if (Test-Path -LiteralPath $cfgPath) {
+                $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
+                if ($cfg -and $cfg.git_path -and ($cfg.git_path -notmatch 'git-ai') -and (Test-Path -LiteralPath $cfg.git_path)) {
+                    $gitPath = $cfg.git_path
+                }
+            }
+        } catch { }
+    }
+
+    # If detection failed or was our own shim, try to recover from saved config in the Program Files directory (new location)
     if (-not $gitPath) {
         try {
             $cfgPath = Join-Path $env:ProgramFiles "git-ai\config.json"
@@ -310,6 +323,33 @@ function Set-PathPrependBeforeGit {
 
     $normalizedAdd = NormalizePath $PathToAdd
 
+    # Helper to build new PATH string with PathToAdd inserted before first 'git' entry
+    function BuildPathWithInsert([string]$existingPath, [string]$toInsert) {
+        $entries = @()
+        if ($existingPath) { $entries = ($existingPath -split $sep) | Where-Object { $_ -and $_.Trim() -ne '' } }
+
+        # De-duplicate and remove any existing instance of $toInsert
+        $list = New-Object System.Collections.Generic.List[string]
+        $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+        foreach ($e in $entries) {
+            $n = NormalizePath $e
+            if (-not $seen.Contains($n) -and $n -ne $normalizedAdd -and $n -notmatch 'git-ai') {
+                $seen.Add($n) | Out-Null
+                $list.Add($e) | Out-Null
+            }
+        }
+
+        # Find first index that matches 'git' anywhere (case-insensitive)
+        $insertIndex = 0
+        for ($i = 0; $i -lt $list.Count; $i++) {
+            if ($list[$i] -match '(?i)git') { $insertIndex = $i; break }
+        }
+
+        $list.Insert($insertIndex, $toInsert)
+        return ($list -join $sep)
+    }
+
+    $userStatus = 'Skipped'
     try {
         $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
         $entries = @()
