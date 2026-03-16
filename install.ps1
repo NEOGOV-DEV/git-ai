@@ -138,29 +138,37 @@ function Get-Architecture {
 }
 
 function Get-StdGitPath {
-    $cmd = Get-Command git.exe -ErrorAction SilentlyContinue
+    # 1. Look through ALL git.exe instances on the current PATH
+    $allGits = Get-Command git.exe -All -ErrorAction SilentlyContinue
     $gitPath = $null
-    if ($cmd -and $cmd.Path) {
-        # Ensure we never return a path for git that contains git-ai (recursive)
-        if ($cmd.Path -notmatch "git-ai") {
-            $gitPath = $cmd.Path
+    
+    if ($allGits) {
+        foreach ($cmd in $allGits) {
+            # Skip the git-ai shim to find the "real" git
+            if ($cmd.Path -notmatch "git-ai") {
+                $gitPath = $cmd.Path
+                break
+            }
         }
     }
 
-    # If detection failed or was our own shim, try to recover from saved config in the user's home directory (legacy location)
+    # 2. If not on PATH (common for SYSTEM account), check default install locations
     if (-not $gitPath) {
-        try {
-            $cfgPath = Join-Path $HOME "git-ai\config.json"
-            if (Test-Path -LiteralPath $cfgPath) {
-                $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
-                if ($cfg -and $cfg.git_path -and ($cfg.git_path -notmatch 'git-ai') -and (Test-Path -LiteralPath $cfg.git_path)) {
-                    $gitPath = $cfg.git_path
-                }
+        $searchPaths = @(
+            "$env:ProgramFiles\Git\cmd\git.exe",
+            "$env:ProgramFiles\Git\bin\git.exe",
+            "$env:SystemDrive\Program Files (x86)\Git\cmd\git.exe",
+            "$env:SystemDrive\Program Files\Git\cmd\git.exe"
+        )
+        foreach ($p in $searchPaths) {
+            if (Test-Path -LiteralPath $p) {
+                $gitPath = $p
+                break
             }
-        } catch { }
+        }
     }
 
-    # If detection failed or was our own shim, try to recover from saved config in the Program Files directory (new location)
+    # 3. Check saved config (existing logic)
     if (-not $gitPath) {
         try {
             $cfgPath = Join-Path $env:ProgramFiles "git-ai\config.json"
@@ -173,16 +181,16 @@ function Get-StdGitPath {
         } catch { }
     }
 
-    # If still not found, fail with a clear message
+    # 4. Final Validation
     if (-not $gitPath) {
-        Write-ErrorAndExit "Could not detect a standard git binary on PATH. Please ensure you have Git installed and available on your PATH. If you believe this is a bug with the installer, please file an issue at https://github.com/git-ai-project/git-ai/issues."
+        Write-ErrorAndExit "Could not detect a standard git binary. Please ensure Git for Windows is installed in C:\Program Files\Git."
     }
 
     try {
         & $gitPath --version | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'bad' }
     } catch {
-        Write-ErrorAndExit "Detected git at $gitPath is not usable (--version failed). Please ensure you have Git installed and available on your PATH. If you believe this is a bug with the installer, please file an issue at https://github.com/git-ai-project/git-ai/issues."
+        Write-ErrorAndExit "Detected git at $gitPath is not usable."
     }
 
     return $gitPath
