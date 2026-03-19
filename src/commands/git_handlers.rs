@@ -359,10 +359,6 @@ fn run_pre_command_hooks(
                 command_hooks_context.push_authorship_handle =
                     push_hooks::push_pre_command_hook(parsed_args, repository);
             }
-            Some("fetch") => {
-                command_hooks_context.fetch_authorship_handle =
-                    fetch_hooks::fetch_pull_pre_command_hook(parsed_args, repository);
-            }
             Some("pull") => {
                 fetch_hooks::pull_pre_command_hook(parsed_args, repository, command_hooks_context);
             }
@@ -418,12 +414,6 @@ fn run_post_command_hooks(
                 parsed_args,
                 exit_status,
                 repository,
-                command_hooks_context,
-            ),
-            Some("fetch") => fetch_hooks::fetch_pull_post_command_hook(
-                repository,
-                parsed_args,
-                exit_status,
                 command_hooks_context,
             ),
             Some("pull") => fetch_hooks::pull_post_command_hook(
