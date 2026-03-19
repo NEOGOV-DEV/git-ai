@@ -286,7 +286,7 @@ impl TestRepo {
                     worktree_path.to_str().unwrap(),
                     "branch",
                     "-m",
-                    &default_branch,
+                    default_branch,
                 ])
                 .output()
                 .expect("failed to rename worktree branch");

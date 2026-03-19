@@ -354,7 +354,7 @@ fn test_squash_merge_preserves_custom_attributes_from_config() {
         .expect("feature commit should have authorship note");
     let feature_log =
         AuthorshipLog::deserialize_from_string(&feature_note).expect("parse feature note");
-    for (_id, prompt) in &feature_log.metadata.prompts {
+    for prompt in feature_log.metadata.prompts.values() {
         assert_eq!(
             prompt.custom_attributes.as_ref(),
             Some(&attrs),
@@ -377,7 +377,7 @@ fn test_squash_merge_preserves_custom_attributes_from_config() {
         !squash_log.metadata.prompts.is_empty(),
         "squash commit should have prompt records"
     );
-    for (_id, prompt) in &squash_log.metadata.prompts {
+    for prompt in squash_log.metadata.prompts.values() {
         assert_eq!(
             prompt.custom_attributes.as_ref(),
             Some(&attrs),

@@ -142,7 +142,7 @@ fn test_cherry_pick_event_variants() {
 
 #[test]
 fn test_parse_single_commit() {
-    let args = vec!["abc123".to_string()];
+    let args = ["abc123".to_string()];
 
     // Simulate commit parsing
     let commits: Vec<String> = args
@@ -157,7 +157,7 @@ fn test_parse_single_commit() {
 
 #[test]
 fn test_parse_multiple_commits() {
-    let args = vec![
+    let args = [
         "commit1".to_string(),
         "commit2".to_string(),
         "commit3".to_string(),
@@ -177,7 +177,7 @@ fn test_parse_multiple_commits() {
 
 #[test]
 fn test_parse_commits_with_flags() {
-    let args = vec![
+    let args = [
         "-x".to_string(),
         "commit1".to_string(),
         "--edit".to_string(),
@@ -197,7 +197,7 @@ fn test_parse_commits_with_flags() {
 
 #[test]
 fn test_filter_flag_with_value() {
-    let args = vec!["-m".to_string(), "1".to_string(), "commit1".to_string()];
+    let args = ["-m".to_string(), "1".to_string(), "commit1".to_string()];
 
     // Simulate filtering -m and its value
     let mut filtered = Vec::new();
@@ -219,7 +219,7 @@ fn test_filter_flag_with_value() {
 
 #[test]
 fn test_filter_special_keywords() {
-    let args = vec![
+    let args = [
         "continue".to_string(),
         "abort".to_string(),
         "quit".to_string(),
@@ -227,7 +227,7 @@ fn test_filter_special_keywords() {
         "commit1".to_string(),
     ];
 
-    let keywords = vec!["continue", "abort", "quit", "skip"];
+    let keywords = ["continue", "abort", "quit", "skip"];
     let commits: Vec<String> = args
         .iter()
         .filter(|a| !keywords.contains(&a.as_str()))
@@ -244,13 +244,13 @@ fn test_filter_special_keywords() {
 
 #[test]
 fn test_detect_commit_range() {
-    let ref1 = "commit1..commit2";
-    let ref2 = "commit1^..commit2";
-    let ref3 = "commit1";
+    let range1 = "commit1..commit2";
+    let range2 = "commit1^..commit2";
+    let single = "commit1";
 
-    assert!(ref1.contains(".."));
-    assert!(ref2.contains(".."));
-    assert!(!ref3.contains(".."));
+    assert!(range1.contains(".."));
+    assert!(range2.contains(".."));
+    assert!(!single.contains(".."));
 }
 
 #[test]
@@ -259,7 +259,7 @@ fn test_range_expansion_format() {
     let range = "A..B";
     let reverse_flag = "--reverse";
 
-    let expected_args = vec!["rev-list", reverse_flag, range];
+    let expected_args = ["rev-list", reverse_flag, range];
 
     assert_eq!(expected_args.len(), 3);
     assert_eq!(expected_args[0], "rev-list");
@@ -484,18 +484,14 @@ fn test_post_hook_completed() {
 
 #[test]
 fn test_post_hook_with_failure_status() {
-    use std::process::ExitStatus;
-
     // Simulate a failed exit status
     // Note: We can't easily create an ExitStatus in tests, so we test the logic
 
     let success = true; // Simulated from exit_status.success()
     let failed = !success;
 
-    if failed {
-        // Should log abort event
-        assert!(true);
-    }
+    // When failed, the hook should log an abort event
+    assert!(!failed, "This simulated scenario should not be failed");
 }
 
 // ==============================================================================
@@ -535,7 +531,7 @@ fn test_build_commit_mappings() {
 
 #[test]
 fn test_commit_mapping_reversal() {
-    let mut commits = vec![
+    let mut commits = [
         "commit3".to_string(),
         "commit2".to_string(),
         "commit1".to_string(),
@@ -551,7 +547,7 @@ fn test_commit_mapping_reversal() {
 
 #[test]
 fn test_empty_commit_mapping() {
-    let commits: Vec<String> = vec![];
+    let commits: [String; 0] = [];
 
     assert_eq!(commits.len(), 0);
     // Should handle empty case gracefully
@@ -642,12 +638,12 @@ fn test_no_start_event_found() {
 
 #[test]
 fn test_dry_run_detection() {
-    let args1 = vec![
+    let args1 = [
         "cherry-pick".to_string(),
         "--dry-run".to_string(),
         "commit".to_string(),
     ];
-    let args2 = vec!["cherry-pick".to_string(), "commit".to_string()];
+    let args2 = ["cherry-pick".to_string(), "commit".to_string()];
 
     let is_dry_run_1 = args1.iter().any(|a| a == "--dry-run");
     let is_dry_run_2 = args2.iter().any(|a| a == "--dry-run");
@@ -658,14 +654,12 @@ fn test_dry_run_detection() {
 
 #[test]
 fn test_dry_run_skips_post_hook() {
-    let args = vec!["--dry-run".to_string()];
+    let args = ["--dry-run".to_string()];
 
-    if args.iter().any(|a| a == "--dry-run") {
-        // Should return early
-        assert!(true);
-    } else {
-        panic!("Should have detected dry-run");
-    }
+    assert!(
+        args.iter().any(|a| a == "--dry-run"),
+        "Should have detected dry-run"
+    );
 }
 
 // ==============================================================================
@@ -677,12 +671,7 @@ fn test_head_unchanged_detection() {
     let original_head = "abc123";
     let new_head = "abc123";
 
-    if original_head == new_head {
-        // Cherry-pick resulted in no changes
-        assert!(true);
-    } else {
-        panic!("Heads should be equal");
-    }
+    assert_eq!(original_head, new_head, "Heads should be equal");
 }
 
 #[test]
@@ -690,12 +679,7 @@ fn test_head_changed_detection() {
     let original_head = "abc123";
     let new_head = "def456";
 
-    if original_head == new_head {
-        panic!("Heads should differ");
-    } else {
-        // Cherry-pick created new commits
-        assert!(true);
-    }
+    assert_ne!(original_head, new_head, "Heads should differ");
 }
 
 // ==============================================================================
@@ -753,7 +737,7 @@ fn test_cherry_pick_abort_flow() {
 
 #[test]
 fn test_strategy_flag_filtering() {
-    let args = vec![
+    let args = [
         "-s".to_string(),
         "recursive".to_string(),
         "commit1".to_string(),
@@ -779,7 +763,7 @@ fn test_strategy_flag_filtering() {
 
 #[test]
 fn test_mainline_flag_filtering() {
-    let args = vec![
+    let args = [
         "--mainline".to_string(),
         "1".to_string(),
         "commit1".to_string(),
@@ -811,7 +795,7 @@ fn test_mainline_flag_filtering() {
 fn test_resolve_commit_sha_format() {
     // Test rev-parse argument format
     let commit_ref = "HEAD~1";
-    let args = vec!["rev-parse".to_string(), commit_ref.to_string()];
+    let args = ["rev-parse".to_string(), commit_ref.to_string()];
 
     assert_eq!(args[0], "rev-parse");
     assert_eq!(args[1], "HEAD~1");
@@ -819,7 +803,7 @@ fn test_resolve_commit_sha_format() {
 
 #[test]
 fn test_resolve_symbolic_refs() {
-    let refs = vec!["HEAD", "main", "feature", "HEAD~1", "abc123"];
+    let refs = ["HEAD", "main", "feature", "HEAD~1", "abc123"];
 
     for ref_str in refs {
         // Each would be resolved via git rev-parse
@@ -836,7 +820,7 @@ fn test_event_sequence_start_complete() {
     use git_ai::git::rewrite_log::{CherryPickCompleteEvent, CherryPickStartEvent};
 
     // Successful cherry-pick: Start -> Complete
-    let events = vec![
+    let events = [
         RewriteLogEvent::cherry_pick_start(CherryPickStartEvent::new(
             "abc".to_string(),
             vec!["commit".to_string()],
@@ -867,7 +851,7 @@ fn test_event_sequence_start_abort() {
     use git_ai::git::rewrite_log::{CherryPickAbortEvent, CherryPickStartEvent};
 
     // Aborted cherry-pick: Start -> Abort
-    let events = vec![
+    let events = [
         RewriteLogEvent::cherry_pick_start(CherryPickStartEvent::new(
             "abc".to_string(),
             vec!["commit".to_string()],

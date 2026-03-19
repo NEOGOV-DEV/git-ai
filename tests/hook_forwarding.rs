@@ -3,8 +3,11 @@ mod repos;
 
 use repos::test_repo::TestRepo;
 use serial_test::serial;
+#[cfg(unix)]
 use std::fs;
-use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
 
 struct EnvVarGuard {
     key: &'static str,
@@ -43,6 +46,7 @@ fn set_executable(path: &Path) {
     fs::set_permissions(path, perms).expect("failed to set executable bit");
 }
 
+#[cfg(unix)]
 fn git_dir(repo: &TestRepo) -> PathBuf {
     PathBuf::from(
         repo.git(&["rev-parse", "--absolute-git-dir"])
@@ -68,10 +72,12 @@ fn managed_hooks_dir(repo: &TestRepo) -> PathBuf {
     git_common_dir(repo).join("ai").join("hooks")
 }
 
+#[cfg(unix)]
 fn hook_state_path(repo: &TestRepo) -> PathBuf {
     git_common_dir(repo).join("ai").join("git_hooks_state.json")
 }
 
+#[cfg(unix)]
 fn configure_forward_target(repo: &TestRepo, forward_dir: &Path) {
     repo.git(&[
         "config",
@@ -85,6 +91,7 @@ fn configure_forward_target(repo: &TestRepo, forward_dir: &Path) {
         .expect("git-hooks ensure should succeed");
 }
 
+#[cfg(unix)]
 fn prepare_file(repo: &TestRepo, filename: &str) {
     fs::write(repo.path().join(filename), "hello\n").expect("failed to write file");
     repo.git(&["add", filename])

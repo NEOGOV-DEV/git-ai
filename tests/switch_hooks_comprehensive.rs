@@ -1,7 +1,6 @@
 #[macro_use]
 mod repos;
 use git_ai::git::repository;
-use git_ai::git::repository::Repository;
 mod test_utils;
 
 use crate::repos::test_repo::TestRepo;
@@ -29,7 +28,7 @@ fn make_switch_invocation(args: &[&str]) -> ParsedGitInvocation {
 
 #[test]
 fn test_pre_switch_hook_normal() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -59,7 +58,7 @@ fn test_pre_switch_hook_normal() {
 
 #[test]
 fn test_pre_switch_hook_with_merge_flag() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -97,7 +96,7 @@ fn test_pre_switch_hook_with_merge_flag() {
 
 #[test]
 fn test_pre_switch_hook_merge_without_changes() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -127,7 +126,7 @@ fn test_pre_switch_hook_merge_without_changes() {
 
 #[test]
 fn test_pre_switch_hook_merge_short_flag() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -166,10 +165,10 @@ fn test_pre_switch_hook_merge_short_flag() {
 
 #[test]
 fn test_post_switch_hook_success() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
-    let base_commit = repo.commit("base commit").unwrap();
+    let _base_commit = repo.commit("base commit").unwrap();
 
     repo.git(&["checkout", "-b", "feature"]).unwrap();
     repo.filename("feature.txt")
@@ -203,7 +202,7 @@ fn test_post_switch_hook_success() {
 
 #[test]
 fn test_post_switch_hook_failed() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -241,7 +240,7 @@ fn test_post_switch_hook_failed() {
 
 #[test]
 fn test_post_switch_hook_head_unchanged() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -271,10 +270,10 @@ fn test_post_switch_hook_head_unchanged() {
 
 #[test]
 fn test_post_switch_hook_force_switch() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
-    let base_commit = repo.commit("base commit").unwrap();
+    let _base_commit = repo.commit("base commit").unwrap();
 
     repo.git(&["checkout", "-b", "feature"]).unwrap();
     repo.filename("feature.txt")
@@ -320,7 +319,7 @@ fn test_post_switch_hook_force_switch() {
 
 #[test]
 fn test_post_switch_hook_force_short_flag() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -359,7 +358,7 @@ fn test_post_switch_hook_force_short_flag() {
 
 #[test]
 fn test_post_switch_hook_discard_changes_flag() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -402,7 +401,7 @@ fn test_post_switch_hook_discard_changes_flag() {
 
 #[test]
 fn test_post_switch_hook_with_merge() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -489,7 +488,7 @@ fn test_merge_short_flag_detection() {
 
 #[test]
 fn test_detect_uncommitted_changes_staged() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -507,7 +506,7 @@ fn test_detect_uncommitted_changes_staged() {
 
 #[test]
 fn test_detect_uncommitted_changes_unstaged() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -525,7 +524,7 @@ fn test_detect_uncommitted_changes_unstaged() {
 
 #[test]
 fn test_no_uncommitted_changes() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -542,7 +541,7 @@ fn test_no_uncommitted_changes() {
 
 #[test]
 fn test_working_log_rename() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     let commit1 = repo.commit("commit 1").unwrap();
@@ -551,12 +550,12 @@ fn test_working_log_rename() {
     repo.filename("feature.txt")
         .set_contents(vec!["feature"])
         .stage();
-    let commit2 = repo.commit("commit 2").unwrap();
+    let _commit2 = repo.commit("commit 2").unwrap();
 
     let repository = repository::find_repository_in_path(repo.path().to_str().unwrap()).unwrap();
 
     // Simulate working log for commit1
-    let working_log = repository
+    let _working_log = repository
         .storage
         .working_log_for_base_commit(&commit1.commit_sha);
 
@@ -570,7 +569,7 @@ fn test_working_log_rename() {
 
 #[test]
 fn test_switch_normal_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -579,7 +578,7 @@ fn test_switch_normal_flow() {
     repo.filename("feature.txt")
         .set_contents(vec!["feature"])
         .stage();
-    let feature_commit = repo.commit("feature commit").unwrap();
+    let _feature_commit = repo.commit("feature commit").unwrap();
 
     let mut repository =
         repository::find_repository_in_path(repo.path().to_str().unwrap()).unwrap();
@@ -613,7 +612,7 @@ fn test_switch_normal_flow() {
 
 #[test]
 fn test_switch_force_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -661,7 +660,7 @@ fn test_switch_force_flow() {
 
 #[test]
 fn test_switch_new_branch_creation() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -693,7 +692,7 @@ fn test_switch_new_branch_creation() {
 
 #[test]
 fn test_switch_between_multiple_branches() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();

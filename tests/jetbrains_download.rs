@@ -234,9 +234,8 @@ fn test_install_plugin_via_cli_with_invalid_binary() {
 
     // Should return Ok(false) when CLI fails, not an error
     assert!(result.is_ok(), "Should handle missing binary gracefully");
-    assert_eq!(
-        result.unwrap(),
-        false,
+    assert!(
+        !result.unwrap(),
         "Should return false for failed installation"
     );
 }

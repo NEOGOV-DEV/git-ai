@@ -41,7 +41,7 @@ fn test_install_status_equality() {
 fn test_install_status_copy_clone() {
     let status = InstallStatus::Installed;
     let copied = status;
-    let cloned = status.clone();
+    let cloned = status;
 
     assert_eq!(status, copied);
     assert_eq!(status, cloned);

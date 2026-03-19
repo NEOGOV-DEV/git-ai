@@ -1,19 +1,19 @@
-/// Comprehensive tests for src/commands/blame.rs
-///
-/// This test module covers critical functionality in blame.rs (1,811 LOC)
-/// including integration tests for AI authorship overlay, error handling,
-/// edge cases, and output formatting.
-///
-/// Test coverage areas:
-/// 1. Core blame functionality with AI authorship
-/// 2. Error handling (invalid refs, missing files, git errors)
-/// 3. Edge cases (empty files, binary files, renamed files)
-/// 4. Output formatting (default, porcelain, incremental, JSON)
-/// 5. Line range handling
-/// 6. Commit filtering (newest_commit, oldest_commit, oldest_date)
-/// 7. AI authorship splitting by human author
-/// 8. Foreign prompt lookups
-/// 9. File path normalization (absolute vs relative)
+//! Comprehensive tests for src/commands/blame.rs
+//!
+//! This test module covers critical functionality in blame.rs (1,811 LOC)
+//! including integration tests for AI authorship overlay, error handling,
+//! edge cases, and output formatting.
+//!
+//! Test coverage areas:
+//! 1. Core blame functionality with AI authorship
+//! 2. Error handling (invalid refs, missing files, git errors)
+//! 3. Edge cases (empty files, binary files, renamed files)
+//! 4. Output formatting (default, porcelain, incremental, JSON)
+//! 5. Line range handling
+//! 6. Commit filtering (newest_commit, oldest_commit, oldest_date)
+//! 7. AI authorship splitting by human author
+//! 8. Foreign prompt lookups
+//! 9. File path normalization (absolute vs relative)
 
 #[macro_use]
 mod repos;
@@ -131,9 +131,11 @@ fn test_blame_success_with_newest_commit() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.newest_commit = Some(commit1.commit_sha.clone());
-    options.no_output = true;
+    let options = GitAiBlameOptions {
+        newest_commit: Some(commit1.commit_sha.clone()),
+        no_output: true,
+        ..Default::default()
+    };
 
     let (line_authors, _) = gitai_repo.blame("versioned.txt", &options).unwrap();
 
@@ -677,8 +679,10 @@ fn test_blame_ai_authorship_hunk_splitting() {
     notes_add(&gitai_repo, &commit_sha, &note_content).unwrap();
 
     // Get hunks with split_hunks_by_ai_author enabled
-    let mut options = GitAiBlameOptions::default();
-    options.split_hunks_by_ai_author = true;
+    let options = GitAiBlameOptions {
+        split_hunks_by_ai_author: true,
+        ..Default::default()
+    };
 
     let hunks = gitai_repo.blame_hunks("test.txt", 1, 3, &options).unwrap();
 
@@ -733,8 +737,10 @@ fn test_blame_ai_authorship_no_splitting() {
         .expect("Failed to find repository");
     notes_add(&gitai_repo, &commit_sha, &note_content).unwrap();
 
-    let mut options = GitAiBlameOptions::default();
-    options.split_hunks_by_ai_author = false;
+    let options = GitAiBlameOptions {
+        split_hunks_by_ai_author: false,
+        ..Default::default()
+    };
 
     let hunks = gitai_repo.blame_hunks("test.txt", 1, 2, &options).unwrap();
 
@@ -755,9 +761,11 @@ fn test_blame_ai_authorship_return_human_as_human() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.return_human_authors_as_human = true;
-    options.no_output = true;
+    let options = GitAiBlameOptions {
+        return_human_authors_as_human: true,
+        no_output: true,
+        ..Default::default()
+    };
 
     let (line_authors, _) = gitai_repo.blame("test.txt", &options).unwrap();
 
@@ -793,9 +801,11 @@ fn test_blame_commit_range_oldest_and_newest() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.oldest_commit = Some(commit1);
-    options.newest_commit = Some(commit2);
+    let options = GitAiBlameOptions {
+        oldest_commit: Some(commit1),
+        newest_commit: Some(commit2),
+        ..Default::default()
+    };
 
     let (line_authors, _) = gitai_repo.blame("test.txt", &options).unwrap();
 
@@ -821,9 +831,11 @@ fn test_blame_commit_range_with_oldest_date() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.oldest_date = Some(now.into());
-    options.no_output = true;
+    let options = GitAiBlameOptions {
+        oldest_date: Some(now.into()),
+        no_output: true,
+        ..Default::default()
+    };
 
     // Blame should only see commits after the date
     let result = gitai_repo.blame("test.txt", &options);
@@ -923,9 +935,11 @@ fn test_blame_multiple_line_ranges() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.line_ranges = vec![(1, 2), (4, 5)];
-    options.no_output = true;
+    let options = GitAiBlameOptions {
+        line_ranges: vec![(1, 2), (4, 5)],
+        no_output: true,
+        ..Default::default()
+    };
 
     let (line_authors, _) = gitai_repo.blame("test.txt", &options).unwrap();
 
@@ -954,9 +968,11 @@ fn test_blame_analysis_matches_blame_no_output_multi_ranges() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.line_ranges = vec![(1, 2), (4, 5)];
-    options.no_output = true;
+    let options = GitAiBlameOptions {
+        line_ranges: vec![(1, 2), (4, 5)],
+        no_output: true,
+        ..Default::default()
+    };
 
     let (line_authors, prompt_records) = gitai_repo.blame("test.txt", &options).unwrap();
     let analysis = gitai_repo.blame_analysis("test.txt", &options).unwrap();
@@ -978,8 +994,10 @@ fn test_blame_analysis_returns_requested_ranges_only() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.line_ranges = vec![(1, 2), (5, 6)];
+    let options = GitAiBlameOptions {
+        line_ranges: vec![(1, 2), (5, 6)],
+        ..Default::default()
+    };
 
     let analysis = gitai_repo.blame_analysis("test.txt", &options).unwrap();
 
@@ -1015,8 +1033,10 @@ fn test_blame_ignore_whitespace() {
     let gitai_repo = GitAiRepository::find_repository_in_path(repo.path().to_str().unwrap())
         .expect("Failed to find repository");
 
-    let mut options = GitAiBlameOptions::default();
-    options.ignore_whitespace = true;
+    let options = GitAiBlameOptions {
+        ignore_whitespace: true,
+        ..Default::default()
+    };
 
     let hunks = gitai_repo.blame_hunks("test.txt", 1, 1, &options).unwrap();
 

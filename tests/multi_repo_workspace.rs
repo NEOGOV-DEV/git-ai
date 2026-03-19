@@ -11,7 +11,6 @@
 
 #[macro_use]
 mod repos;
-use repos::test_file::ExpectedLineExt;
 use repos::test_repo::TestRepo;
 
 use git_ai::error::GitAiError;
@@ -280,7 +279,8 @@ fn test_symlinked_repository() {
     let file_in_repo = actual_repo.join("file.txt");
     create_file(&file_in_repo, "content").unwrap();
 
-    // Create symlink to the repo
+    // Create symlink to the repo (symlinks only work reliably on unix)
+    #[cfg(unix)]
     let symlink_path = workspace.join("linked-repo");
 
     #[cfg(unix)]

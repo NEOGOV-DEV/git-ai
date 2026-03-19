@@ -1,7 +1,6 @@
 #[macro_use]
 mod repos;
 use git_ai::git::repository;
-use git_ai::git::repository::Repository;
 mod test_utils;
 
 use crate::repos::test_repo::TestRepo;
@@ -29,13 +28,13 @@ fn make_merge_invocation(args: &[&str]) -> ParsedGitInvocation {
 
 #[test]
 fn test_post_merge_hook_squash_success() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create base commit
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
         .stage();
-    let base = repo.commit("base commit").unwrap();
+    repo.commit("base commit").unwrap();
 
     // Capture original branch before creating feature branch
     let original_branch = repo.current_branch();
@@ -45,7 +44,7 @@ fn test_post_merge_hook_squash_success() {
     repo.filename("feature.txt")
         .set_contents(vec!["feature content"])
         .stage();
-    let feature = repo.commit("feature commit").unwrap();
+    repo.commit("feature commit").unwrap();
 
     // Go back to original branch
     repo.git(&["checkout", &original_branch]).unwrap();
@@ -68,7 +67,7 @@ fn test_post_merge_hook_squash_success() {
 
 #[test]
 fn test_post_merge_hook_squash_failed() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
@@ -114,7 +113,7 @@ fn test_post_merge_hook_squash_failed() {
 
 #[test]
 fn test_post_merge_hook_normal_merge() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
@@ -156,7 +155,7 @@ fn test_post_merge_hook_normal_merge() {
 
 #[test]
 fn test_post_merge_hook_dry_run() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
@@ -194,7 +193,7 @@ fn test_post_merge_hook_dry_run() {
 
 #[test]
 fn test_post_merge_hook_invalid_branch() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
@@ -207,12 +206,12 @@ fn test_post_merge_hook_invalid_branch() {
     let exit_status = std::process::Command::new("true").status().unwrap();
 
     let events_before = repository.storage.read_rewrite_events().unwrap_or_default();
-    let initial_count = events_before.len();
+    let _initial_count = events_before.len();
 
     post_merge_hook(&parsed_args, exit_status, &mut repository);
 
     // Should handle invalid branch gracefully without logging
-    let events_after = repository.storage.read_rewrite_events().unwrap_or_default();
+    let _events_after = repository.storage.read_rewrite_events().unwrap_or_default();
 
     // Event count should not increase or should handle gracefully
     // The hook returns early if it can't resolve the branch
@@ -318,7 +317,7 @@ fn test_parse_branch_name_missing() {
 
 #[test]
 fn test_resolve_current_head() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -334,10 +333,10 @@ fn test_resolve_current_head() {
 
 #[test]
 fn test_resolve_branch_head() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
-    let base = repo.commit("base commit").unwrap();
+    let _base = repo.commit("base commit").unwrap();
 
     repo.git(&["checkout", "-b", "feature"]).unwrap();
     repo.filename("feature.txt")
@@ -360,13 +359,13 @@ fn test_resolve_branch_head() {
 
 #[test]
 fn test_merge_squash_full_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create base
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
         .stage();
-    let base = repo.commit("base commit").unwrap();
+    let _base = repo.commit("base commit").unwrap();
 
     let original_branch = repo.current_branch();
 
@@ -380,7 +379,7 @@ fn test_merge_squash_full_flow() {
     repo.filename("feature2.txt")
         .set_contents(vec!["feature 2"])
         .stage();
-    let feature = repo.commit("feature commit 2").unwrap();
+    let _feature = repo.commit("feature commit 2").unwrap();
 
     // Go back to original branch
     repo.git(&["checkout", &original_branch]).unwrap();
@@ -408,7 +407,7 @@ fn test_merge_squash_full_flow() {
 
 #[test]
 fn test_merge_squash_with_commit() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create base
     repo.filename("base.txt")
@@ -492,7 +491,7 @@ fn test_merge_author_with_flag() {
 
 #[test]
 fn test_merge_squash_empty_branch() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -515,7 +514,7 @@ fn test_merge_squash_empty_branch() {
 
 #[test]
 fn test_merge_squash_detached_head() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     let commit = repo.commit("base commit").unwrap();

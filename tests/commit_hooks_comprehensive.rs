@@ -1,7 +1,6 @@
 #[macro_use]
 mod repos;
 use git_ai::git::repository;
-use git_ai::git::repository::Repository;
 mod test_utils;
 
 use crate::repos::test_repo::TestRepo;
@@ -32,7 +31,7 @@ fn make_commit_invocation(args: &[&str]) -> ParsedGitInvocation {
 
 #[test]
 fn test_pre_commit_hook_success() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create an initial commit so HEAD exists
     repo.filename("initial.txt")
@@ -60,7 +59,7 @@ fn test_pre_commit_hook_success() {
 
 #[test]
 fn test_pre_commit_hook_dry_run() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["initial content"])
@@ -77,7 +76,7 @@ fn test_pre_commit_hook_dry_run() {
 
 #[test]
 fn test_pre_commit_hook_captures_head() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create an initial commit so HEAD exists
     repo.filename("initial.txt")
@@ -108,13 +107,13 @@ fn test_pre_commit_hook_captures_head() {
 
 #[test]
 fn test_post_commit_hook_success() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
         .stage();
 
-    let commit = repo.commit("test commit").unwrap();
+    let _commit = repo.commit("test commit").unwrap();
 
     let mut repository =
         repository::find_repository_in_path(repo.path().to_str().unwrap()).unwrap();
@@ -147,7 +146,7 @@ fn test_post_commit_hook_success() {
 
 #[test]
 fn test_post_commit_hook_amend() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create initial commit
     repo.filename("test.txt")
@@ -159,7 +158,7 @@ fn test_post_commit_hook_amend() {
     repo.filename("test.txt")
         .set_contents(vec!["amended"])
         .stage();
-    let amended_commit = repo
+    let _amended_commit = repo
         .git(&["commit", "--amend", "-m", "amended commit"])
         .unwrap();
 
@@ -194,7 +193,7 @@ fn test_post_commit_hook_amend() {
 
 #[test]
 fn test_post_commit_hook_dry_run() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -228,7 +227,7 @@ fn test_post_commit_hook_dry_run() {
 
 #[test]
 fn test_post_commit_hook_failed_status() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -271,7 +270,7 @@ fn test_post_commit_hook_failed_status() {
 
 #[test]
 fn test_post_commit_hook_pre_hook_failed() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -310,7 +309,7 @@ fn test_post_commit_hook_pre_hook_failed() {
 
 #[test]
 fn test_post_commit_hook_porcelain_suppresses_output() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -343,7 +342,7 @@ fn test_post_commit_hook_porcelain_suppresses_output() {
 
 #[test]
 fn test_post_commit_hook_quiet_suppresses_output() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -599,7 +598,7 @@ fn test_dry_run_flag_detection() {
 
 #[test]
 fn test_extract_author_with_equals() {
-    let args = vec!["--author=John Doe <john@example.com>".to_string()];
+    let args = ["--author=John Doe <john@example.com>".to_string()];
 
     let author = args
         .iter()
@@ -610,7 +609,7 @@ fn test_extract_author_with_equals() {
 
 #[test]
 fn test_extract_author_separate_arg() {
-    let args = vec![
+    let args = [
         "--author".to_string(),
         "John Doe <john@example.com>".to_string(),
     ];
@@ -628,7 +627,7 @@ fn test_extract_author_separate_arg() {
 
 #[test]
 fn test_extract_author_not_present() {
-    let args = vec!["-m".to_string(), "message".to_string()];
+    let args = ["-m".to_string(), "message".to_string()];
 
     let author = args
         .iter()
@@ -643,7 +642,7 @@ fn test_extract_author_not_present() {
 
 #[test]
 fn test_commit_full_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Stage file
     repo.filename("test.txt")
@@ -659,7 +658,7 @@ fn test_commit_full_flow() {
     assert!(pre_result);
 
     // Actual commit
-    let commit = repo.commit("test commit").unwrap();
+    let _commit = repo.commit("test commit").unwrap();
 
     // Post-hook
     let mut context = CommandHooksContext {
@@ -687,7 +686,7 @@ fn test_commit_full_flow() {
 
 #[test]
 fn test_commit_amend_full_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Initial commit
     repo.filename("test.txt")
@@ -711,7 +710,7 @@ fn test_commit_amend_full_flow() {
     assert!(pre_result);
 
     // Actual amend
-    let amended_commit = repo
+    let _amended_commit = repo
         .git(&["commit", "--amend", "-m", "amended commit"])
         .unwrap();
 
