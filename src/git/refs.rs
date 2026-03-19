@@ -833,11 +833,11 @@ mod tests {
         // Create commits - they will auto-create notes on refs/notes/ai
         tmp_repo.write_file("a.txt", "a\n", true).expect("write a");
         tmp_repo.commit_with_message("Commit A").expect("commit A");
-        let commit_a = tmp_repo.get_head_commit_sha().expect("head A");
+        let _commit_a = tmp_repo.get_head_commit_sha().expect("head A");
 
         tmp_repo.write_file("b.txt", "b\n", true).expect("write b");
         tmp_repo.commit_with_message("Commit B").expect("commit B");
-        let commit_b = tmp_repo.get_head_commit_sha().expect("head B");
+        let _commit_b = tmp_repo.get_head_commit_sha().expect("head B");
 
         // Create a third commit without checkpoint to ensure we have a commit without notes
         tmp_repo.write_file("c.txt", "c\n", true).expect("write c");
@@ -1018,10 +1018,10 @@ mod tests {
         // Search for non-existent pattern
         let results = grep_ai_notes(tmp_repo.gitai_repo(), "vscode");
         // grep may return empty or error if no matches, both are acceptable
-        match results {
-            Ok(refs) => assert_eq!(refs.len(), 0),
-            Err(_) => {} // Also acceptable - git grep returns non-zero when no matches
+        if let Ok(refs) = results {
+            assert_eq!(refs.len(), 0);
         }
+        // Err is also acceptable - git grep returns non-zero when no matches
     }
 
     #[test]
@@ -1036,10 +1036,10 @@ mod tests {
         // No notes exist, search should return empty or error
         let results = grep_ai_notes(tmp_repo.gitai_repo(), "cursor");
         // grep may return empty or error if refs/notes/ai doesn't exist
-        match results {
-            Ok(refs) => assert_eq!(refs.len(), 0),
-            Err(_) => {} // Also acceptable - refs/notes/ai may not exist yet
+        if let Ok(refs) = results {
+            assert_eq!(refs.len(), 0);
         }
+        // Err is also acceptable - refs/notes/ai may not exist yet
     }
 
     #[test]
@@ -1179,7 +1179,7 @@ mod tests {
         // Commit B may or may not have a note depending on checkpoint system
         // Just verify we got at least 1 result (commit A)
         assert!(
-            result.len() >= 1,
+            !result.is_empty(),
             "Should have at least 1 commit with notes"
         );
     }

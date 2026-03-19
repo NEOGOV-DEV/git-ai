@@ -1,7 +1,6 @@
 #[macro_use]
 mod repos;
 use git_ai::git::repository;
-use git_ai::git::repository::Repository;
 mod test_utils;
 
 use crate::repos::test_repo::TestRepo;
@@ -42,13 +41,13 @@ fn resolve_git_dir(repo: &TestRepo) -> PathBuf {
 
 #[test]
 fn test_pre_rebase_hook_starts_new_rebase() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create initial commit
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
         .stage();
-    let base_commit = repo.commit("base commit").unwrap();
+    let _base_commit = repo.commit("base commit").unwrap();
 
     // Create branch to rebase
     repo.git(&["checkout", "-b", "feature"]).unwrap();
@@ -87,7 +86,7 @@ fn test_pre_rebase_hook_starts_new_rebase() {
 
 #[test]
 fn test_pre_rebase_hook_continuing_rebase() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     // Create initial commit
     repo.filename("base.txt")
@@ -122,7 +121,7 @@ fn test_pre_rebase_hook_continuing_rebase() {
 
 #[test]
 fn test_pre_rebase_hook_interactive_mode() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
@@ -163,7 +162,7 @@ fn test_pre_rebase_hook_interactive_mode() {
 
 #[test]
 fn test_pre_rebase_hook_with_onto() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt")
         .set_contents(vec!["base content"])
@@ -207,7 +206,7 @@ fn test_pre_rebase_hook_with_onto() {
 
 #[test]
 fn test_post_rebase_hook_still_in_progress() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -252,7 +251,7 @@ fn test_post_rebase_hook_still_in_progress() {
 
 #[test]
 fn test_post_rebase_hook_aborted() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     let original_commit = repo.commit("base commit").unwrap();
@@ -307,7 +306,7 @@ fn test_post_rebase_hook_aborted() {
 
 #[test]
 fn test_post_rebase_hook_dry_run() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -381,7 +380,7 @@ fn test_rebase_directory_detection() {
 fn test_rebase_event_sequence_start_complete() {
     use git_ai::git::rewrite_log::{RebaseCompleteEvent, RebaseStartEvent};
 
-    let events = vec![
+    let events = [
         RewriteLogEvent::rebase_start(RebaseStartEvent::new_with_onto(
             "abc123".to_string(),
             false,
@@ -413,7 +412,7 @@ fn test_rebase_event_sequence_start_complete() {
 fn test_rebase_event_sequence_start_abort() {
     use git_ai::git::rewrite_log::{RebaseAbortEvent, RebaseStartEvent};
 
-    let events = vec![
+    let events = [
         RewriteLogEvent::rebase_start(RebaseStartEvent::new_with_onto(
             "abc123".to_string(),
             false,

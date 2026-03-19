@@ -1,12 +1,12 @@
-/// Tests for agent commit detection in blame.
-///
-/// These tests verify that commits made by known AI agents (identified by
-/// their author email) are correctly attributed as AI-authored in blame output,
-/// even when no explicit authorship note exists.
-///
-/// TDD: These tests define the expected behavior BEFORE implementation.
-/// They should fail initially and pass once agent commit detection is
-/// integrated into overlay_ai_authorship.
+//! Tests for agent commit detection in blame.
+//!
+//! These tests verify that commits made by known AI agents (identified by
+//! their author email) are correctly attributed as AI-authored in blame output,
+//! even when no explicit authorship note exists.
+//!
+//! TDD: These tests define the expected behavior BEFORE implementation.
+//! They should fail initially and pass once agent commit detection is
+//! integrated into overlay_ai_authorship.
 
 #[macro_use]
 mod repos;
@@ -529,12 +529,12 @@ fn test_agent_blame_json_mixed_human_agent() {
             line2_prompt_hash = Some(val_str.to_string());
         } else if range_key.contains('-') {
             let parts: Vec<&str> = range_key.split('-').collect();
-            if parts.len() == 2 {
-                if let (Ok(start), Ok(end)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
-                    if start <= 2 && end >= 2 {
-                        line2_prompt_hash = Some(val_str.to_string());
-                    }
-                }
+            if parts.len() == 2
+                && let (Ok(start), Ok(end)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>())
+                && start <= 2
+                && end >= 2
+            {
+                line2_prompt_hash = Some(val_str.to_string());
             }
         }
     }

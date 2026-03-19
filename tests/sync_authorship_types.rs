@@ -100,18 +100,18 @@ fn test_notes_existence_if_let() {
 fn test_notes_existence_in_result() {
     let result: Result<NotesExistence, String> = Ok(NotesExistence::Found);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), NotesExistence::Found);
+    assert_eq!(result, Ok(NotesExistence::Found));
 
     let result: Result<NotesExistence, String> = Ok(NotesExistence::NotFound);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), NotesExistence::NotFound);
+    assert_eq!(result, Ok(NotesExistence::NotFound));
 }
 
 #[test]
 fn test_notes_existence_in_option() {
     let some_found = Some(NotesExistence::Found);
     assert!(some_found.is_some());
-    assert_eq!(some_found.unwrap(), NotesExistence::Found);
+    assert_eq!(some_found, Some(NotesExistence::Found));
 
     let none: Option<NotesExistence> = None;
     assert!(none.is_none());
@@ -119,7 +119,7 @@ fn test_notes_existence_in_option() {
 
 #[test]
 fn test_notes_existence_in_vec() {
-    let results = vec![
+    let results = [
         NotesExistence::Found,
         NotesExistence::NotFound,
         NotesExistence::Found,
@@ -207,7 +207,10 @@ fn test_notes_existence_in_struct() {
 fn test_notes_existence_default_pattern() {
     // Common pattern: providing a default
     let maybe_notes: Option<NotesExistence> = None;
-    let notes = maybe_notes.unwrap_or(NotesExistence::NotFound);
+    let notes = match maybe_notes {
+        Some(n) => n,
+        None => NotesExistence::NotFound,
+    };
     assert_eq!(notes, NotesExistence::NotFound);
 }
 
@@ -322,10 +325,10 @@ fn test_fetch_arg_parsing_concepts() {
     // Test concepts used in fetch arg parsing
 
     // Typical fetch commands
-    let args1 = vec!["fetch", "origin"];
-    let args2 = vec!["fetch", "upstream", "main"];
-    let args3 = vec!["fetch", "--all"];
-    let args4 = vec!["fetch", "--tags", "origin"];
+    let args1 = ["fetch", "origin"];
+    let args2 = ["fetch", "upstream", "main"];
+    let args3 = ["fetch", "--all"];
+    let args4 = ["fetch", "--tags", "origin"];
 
     // Find first non-flag argument after "fetch"
     let remote1 = args1
@@ -357,9 +360,9 @@ fn test_fetch_arg_parsing_concepts() {
 fn test_push_arg_parsing_concepts() {
     // Test concepts for push command parsing
 
-    let args1 = vec!["push", "origin", "main"];
-    let args2 = vec!["push", "upstream"];
-    let args3 = vec!["push", "--force", "origin"];
+    let args1 = ["push", "origin", "main"];
+    let args2 = ["push", "upstream"];
+    let args3 = ["push", "--force", "origin"];
 
     // Find first non-flag positional arg
     let remote1 = args1

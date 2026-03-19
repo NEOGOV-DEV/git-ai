@@ -527,7 +527,7 @@ fn test_posthog_only_sends_message_envelopes() {
     // Error and performance envelopes go to Sentry only
 
     let envelope_types = vec!["message", "error", "performance", "metrics"];
-    let posthog_accepted = vec!["message"];
+    let posthog_accepted = ["message"];
 
     for env_type in envelope_types {
         let should_send = posthog_accepted.contains(&env_type);
@@ -661,7 +661,7 @@ fn test_corrupted_log_file_with_binary_data() {
 
     // Create a file with binary data (invalid UTF-8)
     let log_path = temp_dir.path().join("corrupted.log");
-    fs::write(&log_path, &[0xFF, 0xFE, 0xFD, 0xFC]).unwrap();
+    fs::write(&log_path, [0xFF, 0xFE, 0xFD, 0xFC]).unwrap();
 
     // fs::read_to_string will return error for invalid UTF-8
     let result = fs::read_to_string(&log_path);
@@ -680,6 +680,7 @@ fn test_lock_file_prevents_concurrent_flush() {
     // Simulate acquiring lock
     let lock_result = std::fs::OpenOptions::new()
         .create(true)
+        .truncate(true)
         .write(true)
         .open(&lock_path);
 
@@ -716,9 +717,7 @@ fn test_enterprise_dsn_precedence() {
     assert_eq!(result, Some("https://env@sentry.io/2".to_string()));
 
     // Without config or env, build-time is used
-    let result: Option<String> = None
-        .or_else(|| None::<String>)
-        .or_else(|| build_dsn.clone());
+    let result: Option<String> = None.or(None::<String>).or_else(|| build_dsn.clone());
     assert_eq!(result, Some("https://build@sentry.io/3".to_string()));
 }
 
@@ -744,11 +743,11 @@ fn test_posthog_config_from_env() {
     let runtime_key = Some("runtime_key".to_string());
     let build_key = Some("build_key".to_string());
 
-    let api_key = runtime_key.or_else(|| build_key);
+    let api_key = runtime_key.or(build_key);
     assert_eq!(api_key, Some("runtime_key".to_string()));
 
     // Default host when not specified
-    let host = None::<String>.unwrap_or_else(|| "https://us.i.posthog.com".to_string());
+    let host = "https://us.i.posthog.com".to_string();
     assert_eq!(host, "https://us.i.posthog.com");
 }
 

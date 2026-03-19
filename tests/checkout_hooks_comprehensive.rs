@@ -1,7 +1,6 @@
 #[macro_use]
 mod repos;
 use git_ai::git::repository;
-use git_ai::git::repository::Repository;
 mod test_utils;
 
 use crate::repos::test_repo::TestRepo;
@@ -29,7 +28,7 @@ fn make_checkout_invocation(args: &[&str]) -> ParsedGitInvocation {
 
 #[test]
 fn test_pre_checkout_hook_normal() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -59,7 +58,7 @@ fn test_pre_checkout_hook_normal() {
 
 #[test]
 fn test_pre_checkout_hook_with_merge_flag() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -96,7 +95,7 @@ fn test_pre_checkout_hook_with_merge_flag() {
 
 #[test]
 fn test_pre_checkout_hook_merge_without_changes() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -126,7 +125,7 @@ fn test_pre_checkout_hook_merge_without_changes() {
 
 #[test]
 fn test_pre_checkout_hook_merge_short_flag() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -157,7 +156,7 @@ fn test_pre_checkout_hook_merge_short_flag() {
 
 #[test]
 fn test_post_checkout_hook_success() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -197,7 +196,7 @@ fn test_post_checkout_hook_success() {
 
 #[test]
 fn test_post_checkout_hook_failed() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -233,7 +232,7 @@ fn test_post_checkout_hook_failed() {
 
 #[test]
 fn test_post_checkout_hook_head_unchanged() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("test.txt")
         .set_contents(vec!["content"])
@@ -263,7 +262,7 @@ fn test_post_checkout_hook_head_unchanged() {
 
 #[test]
 fn test_post_checkout_hook_pathspec() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("file1.txt")
         .set_contents(vec!["file1"])
@@ -307,7 +306,7 @@ fn test_post_checkout_hook_pathspec() {
 
 #[test]
 fn test_post_checkout_hook_multiple_pathspecs() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("file1.txt")
         .set_contents(vec!["file1"])
@@ -348,7 +347,7 @@ fn test_post_checkout_hook_multiple_pathspecs() {
 
 #[test]
 fn test_post_checkout_hook_force_checkout() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -400,7 +399,7 @@ fn test_post_checkout_hook_force_checkout() {
 
 #[test]
 fn test_post_checkout_hook_force_short_flag() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -442,7 +441,7 @@ fn test_post_checkout_hook_force_short_flag() {
 
 #[test]
 fn test_post_checkout_hook_with_merge() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -556,7 +555,7 @@ fn test_pathspec_detection_none() {
 
 #[test]
 fn test_pathspec_exact_match() {
-    let pathspecs = vec!["file.txt".to_string()];
+    let pathspecs = ["file.txt".to_string()];
 
     let matches = |file: &str| {
         pathspecs.iter().any(|p| {
@@ -572,7 +571,7 @@ fn test_pathspec_exact_match() {
 
 #[test]
 fn test_pathspec_directory_match() {
-    let pathspecs = vec!["dir/".to_string()];
+    let pathspecs = ["dir/".to_string()];
 
     let matches = |file: &str| {
         pathspecs.iter().any(|p| {
@@ -589,7 +588,7 @@ fn test_pathspec_directory_match() {
 
 #[test]
 fn test_pathspec_directory_without_slash() {
-    let pathspecs = vec!["dir".to_string()];
+    let pathspecs = ["dir".to_string()];
 
     let matches = |file: &str| {
         pathspecs.iter().any(|p| {
@@ -610,7 +609,7 @@ fn test_pathspec_directory_without_slash() {
 
 #[test]
 fn test_detect_uncommitted_changes_staged() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -628,7 +627,7 @@ fn test_detect_uncommitted_changes_staged() {
 
 #[test]
 fn test_detect_uncommitted_changes_unstaged() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -646,7 +645,7 @@ fn test_detect_uncommitted_changes_unstaged() {
 
 #[test]
 fn test_no_uncommitted_changes() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -663,7 +662,7 @@ fn test_no_uncommitted_changes() {
 
 #[test]
 fn test_checkout_normal_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -709,7 +708,7 @@ fn test_checkout_normal_flow() {
 
 #[test]
 fn test_checkout_force_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -760,7 +759,7 @@ fn test_checkout_force_flow() {
 
 #[test]
 fn test_checkout_pathspec_flow() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("file1.txt")
         .set_contents(vec!["original 1"])
@@ -811,7 +810,7 @@ fn test_checkout_pathspec_flow() {
 
 #[test]
 fn test_checkout_new_branch_creation() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("base.txt").set_contents(vec!["base"]).stage();
     repo.commit("base commit").unwrap();
@@ -843,7 +842,7 @@ fn test_checkout_new_branch_creation() {
 
 #[test]
 fn test_checkout_detached_head() {
-    let mut repo = TestRepo::new();
+    let repo = TestRepo::new();
 
     repo.filename("file1.txt")
         .set_contents(vec!["file1"])
@@ -853,7 +852,7 @@ fn test_checkout_detached_head() {
     repo.filename("file2.txt")
         .set_contents(vec!["file2"])
         .stage();
-    let commit2 = repo.commit("commit 2").unwrap();
+    let _commit2 = repo.commit("commit 2").unwrap();
 
     let mut repository =
         repository::find_repository_in_path(repo.path().to_str().unwrap()).unwrap();

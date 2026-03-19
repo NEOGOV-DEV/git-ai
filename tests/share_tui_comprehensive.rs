@@ -57,9 +57,7 @@ fn test_title_cursor_movement() {
     assert_eq!(cursor, 11);
 
     // Move left
-    if cursor > 0 {
-        cursor -= 1;
-    }
+    cursor = cursor.saturating_sub(1);
     assert_eq!(cursor, 10);
 
     // Home
@@ -107,11 +105,10 @@ fn test_title_backspace() {
     assert_eq!(cursor, 4);
 
     // Backspace at start (should do nothing)
-    cursor = 0;
+    let cursor = 0;
     let len_before = title.len();
     if cursor > 0 {
         title.remove(cursor - 1);
-        cursor -= 1;
     }
 
     assert_eq!(title.len(), len_before);
@@ -120,11 +117,11 @@ fn test_title_backspace() {
 #[test]
 fn test_title_clear() {
     let mut title = "Some long title".to_string();
-    let mut cursor = 7;
+    let _cursor = 7;
 
     // Ctrl+U clears title
     title.clear();
-    cursor = 0;
+    let cursor = 0;
 
     assert_eq!(title, "");
     assert_eq!(cursor, 0);
@@ -344,7 +341,7 @@ fn test_key_modifiers() {
 fn test_layout_constraints() {
     use ratatui::layout::{Constraint, Direction};
 
-    let constraints = vec![
+    let constraints = [
         Constraint::Length(3), // Header
         Constraint::Length(5), // Title input
         Constraint::Length(8), // Options
@@ -597,7 +594,7 @@ fn test_prompt_picker_integration_structure() {
     // Step 2: show_share_config_screen would be called
     // Step 3: create_bundle would be called
 
-    assert!(true, "Control flow structure verified");
+    // Control flow structure verified
 }
 
 #[test]
@@ -606,17 +603,11 @@ fn test_user_cancellation_flow() {
 
     // Scenario 1: Cancel from picker (returns None)
     let picker_result: Option<i32> = None;
-    match picker_result {
-        Some(_) => panic!("Should be cancelled"),
-        None => {} // Expected - user cancelled
-    }
+    assert!(picker_result.is_none(), "Should be cancelled");
 
     // Scenario 2: Cancel from config screen (returns None)
     let config_result: Option<i32> = None;
-    match config_result {
-        Some(_) => panic!("Should be cancelled"),
-        None => {} // Expected - goes back to picker
-    }
+    assert!(config_result.is_none(), "Should be cancelled");
 }
 
 // ==============================================================================

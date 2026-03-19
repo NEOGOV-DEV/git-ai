@@ -336,7 +336,7 @@ fn test_ai_attribution_preserved_with_non_utf8_in_same_commit() {
     let commit = repo.stage_all_and_commit("Mixed commit").unwrap();
 
     assert!(
-        commit.authorship_log.attestations.len() >= 1,
+        !commit.authorship_log.attestations.is_empty(),
         "Should have attestation for the AI-written file"
     );
 

@@ -1493,7 +1493,7 @@ fn test_rebase_preserves_custom_attributes_from_config() {
         .expect("original commit should have authorship note");
     let original_log =
         AuthorshipLog::deserialize_from_string(&original_note).expect("parse original note");
-    for (_id, prompt) in &original_log.metadata.prompts {
+    for prompt in original_log.metadata.prompts.values() {
         assert_eq!(
             prompt.custom_attributes.as_ref(),
             Some(&attrs),
@@ -1521,7 +1521,7 @@ fn test_rebase_preserves_custom_attributes_from_config() {
         !rebased_log.metadata.prompts.is_empty(),
         "rebased commit should have prompt records"
     );
-    for (_id, prompt) in &rebased_log.metadata.prompts {
+    for prompt in rebased_log.metadata.prompts.values() {
         assert_eq!(
             prompt.custom_attributes.as_ref(),
             Some(&attrs),

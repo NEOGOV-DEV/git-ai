@@ -416,16 +416,8 @@ fn test_diff_workdir_insertions_post_filter_equivalence() {
     repo.git_og(&["commit", "-m", "initial"]).unwrap();
 
     // Modify 2 in working dir (don't commit)
-    std::fs::write(
-        repo.path().join(&filenames[0]),
-        format!("line1_0\nline2_0\n"),
-    )
-    .unwrap();
-    std::fs::write(
-        repo.path().join(&filenames[1]),
-        format!("line1_1\nline2_1\n"),
-    )
-    .unwrap();
+    std::fs::write(repo.path().join(&filenames[0]), "line1_0\nline2_0\n").unwrap();
+    std::fs::write(repo.path().join(&filenames[1]), "line1_1\nline2_1\n").unwrap();
 
     let gitai_repo = find_repository_in_path(repo.path().to_str().unwrap()).unwrap();
     let head_sha = gitai_repo.head().unwrap().target().unwrap();

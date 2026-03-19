@@ -7,11 +7,9 @@
 mod repos;
 mod test_utils;
 
-use repos::test_file::ExpectedLineExt;
 use repos::test_repo::TestRepo;
 use serde_json::json;
 use std::fs;
-use std::io::Write;
 use test_utils::fixture_path;
 
 // ============================================================================
