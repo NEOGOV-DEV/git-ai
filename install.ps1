@@ -351,8 +351,6 @@ else {
     $downloadUrlNoExt = "https://github.com/$Repo/releases/latest/download/$binaryName"
 }
 
-Write-Host "Downloading from: $downloadUrlExe"
-
 # Install directory: %USERPROFILE%\.git-ai\bin
 $installDir = Join-Path $HOME ".git-ai\bin"
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
@@ -365,6 +363,7 @@ function Try-Download {
         [Parameter(Mandatory = $true)][string]$Url
     )
     try {
+        Write-Host "Downloading from: $Url"
         Invoke-WebRequest -Uri $Url -OutFile $tmpFile -UseBasicParsing -ErrorAction Stop
         return $true
     }
