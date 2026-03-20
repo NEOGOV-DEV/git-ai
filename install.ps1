@@ -290,6 +290,19 @@ function Get-StdGitPath {
     # 3. Check saved config (existing logic)
     if (-not $gitPath) {
         try {
+            $cfgPath = Join-Path $HOME ".git-ai\config.json"
+            if (Test-Path -LiteralPath $cfgPath) {
+                $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
+                if ($cfg -and $cfg.git_path -and ($cfg.git_path -notmatch 'git-ai') -and (Test-Path -LiteralPath $cfg.git_path)) {
+                    $gitPath = $cfg.git_path
+                }
+            }
+        }
+        catch { }
+    }
+
+    if (-not $gitPath) {
+        try {
             $cfgPath = Join-Path $env:ProgramFiles "git-ai\config.json"
             if (Test-Path -LiteralPath $cfgPath) {
                 $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
@@ -297,9 +310,10 @@ function Get-StdGitPath {
                     $gitPath = $cfg.git_path
                 }
             }
-        } catch { }
+        }
+        catch { }
     }
-
+    
     # 4. Final Validation
     if (-not $gitPath) {
         Write-ErrorAndExit "Could not detect a standard git binary. Please ensure Git for Windows is installed in C:\Program Files\Git."
@@ -308,7 +322,8 @@ function Get-StdGitPath {
     try {
         & $gitPath --version | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'bad' }
-    } catch {
+    }
+    catch {
         Write-ErrorAndExit "Detected git at $gitPath is not usable."
     }
 
@@ -373,23 +388,54 @@ function Set-PathPrependBeforeGit {
             [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User')
             $userStatus = 'Updated'
         }
-    } catch {
+        else {
+            $userStatus = 'AlreadyPresent'
+        }
+    }
+    catch {
         $userStatus = 'Error'
+    }
+
+    # Try to update Machine PATH
+    $machineStatus = 'Skipped'
+    try {
+        $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+        $newMachinePath = BuildPathWithInsert -existingPath $machinePath -toInsert $PathToAdd
+        if ($newMachinePath -ne $machinePath) {
+            [Environment]::SetEnvironmentVariable('Path', $newMachinePath, 'Machine')
+            $machineStatus = 'Updated'
+        }
+        else {
+            # Nothing changed at Machine scope; still treat as Machine for reporting
+            $machineStatus = 'AlreadyPresent'
+        }
+    }
+    catch {
+        # Access denied or not elevated; do NOT modify User PATH. Print big red error with instructions.
+        $origGit = $null
+        try { $origGit = Get-StdGitPath } catch { }
+        $origGitDir = if ($origGit) { (Split-Path $origGit -Parent) } else { 'your Git installation directory' }
+        Write-Host ''
+        Write-Host 'ERROR: Unable to update the SYSTEM PATH (administrator rights required).' -ForegroundColor Red
+        Write-Host 'Your PATH was NOT changed. To ensure git-ai takes precedence over Git:' -ForegroundColor Red
+        Write-Host ("  1) Run PowerShell as Administrator and re-run this installer; OR") -ForegroundColor Red
+        Write-Host ("  2) Manually edit the SYSTEM Path and move '{0}' before any entries containing 'Git' (e.g. '{1}')." -f $PathToAdd, $origGitDir) -ForegroundColor Red
+        Write-Host "     Steps: Start -> type 'Environment Variables' -> 'Edit the system environment variables' -> Environment Variables ->" -ForegroundColor Red
+        Write-Host ("            Under 'System variables', select 'Path' -> Edit -> Move '{0}' to the top (before Git) -> OK." -f $PathToAdd) -ForegroundColor Red
+        Write-Host ''
+        if ($userStatus -eq 'Updated' -or $userStatus -eq 'AlreadyPresent') {
+            Write-Host 'User PATH was updated successfully, so git-ai will still take precedence for this account.' -ForegroundColor Yellow
+        }
+        $machineStatus = 'Error'
     }
 
     # Update current process PATH immediately for this session
     try {
         $procPath = $env:PATH
-        $procEntries = @()
-        if ($procPath) { $procEntries = ($procPath -split $sep) | Where-Object { $_ -and $_.Trim() -ne '' } }
-        $procHas = $false
-        foreach ($e in $procEntries) {
-            if ((NormalizePath $e) -eq $normalizedAdd) { $procHas = $true; break }
-        }
-        if (-not $procHas) {
-            $env:PATH = if ($procPath) { "$procPath$sep$PathToAdd" } else { $PathToAdd }
-        }
-    } catch { }
+        $newProcPath = BuildPathWithInsert -existingPath $procPath -toInsert $PathToAdd
+        if ($newProcPath -ne $procPath) { $env:PATH = $newProcPath }
+    }
+    catch { }
 
     return [PSCustomObject]@{
         UserStatus = $userStatus
@@ -408,17 +454,20 @@ $binaryName = "git-ai-$os-$arch"
 # Priority: 1. Local binary override, 2. Pinned version (for release builds), 3. Environment variable, 4. "latest"
 if (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_LOCAL_BINARY)) {
     $releaseTag = 'local'
-} elseif ($PinnedVersion -ne '__VERSION_PLACEHOLDER__') {
+}
+elseif ($PinnedVersion -ne '__VERSION_PLACEHOLDER__') {
     # Version-pinned install script from a release
     $releaseTag = $PinnedVersion
     $downloadUrlExe = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName.exe"
     $downloadUrlNoExt = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName"
-} elseif (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_RELEASE_TAG) -and $env:GIT_AI_RELEASE_TAG -ne 'latest') {
+}
+elseif (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_RELEASE_TAG) -and $env:GIT_AI_RELEASE_TAG -ne 'latest') {
     # Environment variable override
     $releaseTag = $env:GIT_AI_RELEASE_TAG
     $downloadUrlExe = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName.exe"
     $downloadUrlNoExt = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName"
-} else {
+}
+else {
     # Default to latest
     $releaseTag = 'latest'
     $downloadUrlExe = "https://github.com/$Repo/releases/latest/download/$binaryName.exe"
@@ -427,8 +476,8 @@ if (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_LOCAL_BINARY)) {
 
 Write-Host "Downloading from: $downloadUrlExe"
 
-# Install directory: %ProgramFiles%\git-ai\bin
-$installDir = Join-Path $env:ProgramFiles "git-ai\bin"
+# Install directory: %USERPROFILE%\.git-ai\bin
+$installDir = Join-Path $HOME ".git-ai\bin"
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
 Write-Host ("Downloading git-ai (release: {0})..." -f $releaseTag)
@@ -449,7 +498,8 @@ function Try-Download {
             $ProgressPreference = $oldProgressPreference
         }
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -463,9 +513,11 @@ if (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_LOCAL_BINARY)) {
     }
     Copy-Item -Force -Path $env:GIT_AI_LOCAL_BINARY -Destination $tmpFile
     $downloadedBinaryName = "$binaryName.exe"
-} elseif (Try-Download -Url $downloadUrlExe) {
+}
+elseif (Try-Download -Url $downloadUrlExe) {
     $downloadedBinaryName = "$binaryName.exe"
-} elseif (Try-Download -Url $downloadUrlNoExt) {
+}
+elseif (Try-Download -Url $downloadUrlNoExt) {
     $downloadedBinaryName = $binaryName
 }
 
@@ -479,7 +531,8 @@ try {
         Remove-Item -Force -ErrorAction SilentlyContinue $tmpFile
         Write-ErrorAndExit 'Downloaded file is empty'
     }
-} catch {
+}
+catch {
     Remove-Item -Force -ErrorAction SilentlyContinue $tmpFile
     Write-ErrorAndExit 'Download failed'
 }
@@ -518,7 +571,8 @@ if ($env:INSTALL_NONCE -and $env:API_BASE) {
         if ($LASTEXITCODE -ne 0) {
             $needLogin = $true
         }
-    } catch {
+    }
+    catch {
         $needLogin = $true
     }
 }
@@ -528,7 +582,8 @@ Write-Host 'Setting up IDE/agent hooks...'
 try {
     & $finalExe install-hooks | Out-Host
     Write-Success 'Successfully set up IDE/agent hooks'
-} catch {
+}
+catch {
     Write-Warning "Warning: Failed to set up IDE/agent hooks. Please try running 'git-ai install-hooks' manually."
 }
 
@@ -546,10 +601,22 @@ if ($skipPathUpdate) {
 }
 if ($pathUpdate.UserStatus -eq 'Updated') {
     Write-Success 'Successfully added git-ai to the user PATH.'
-} elseif ($pathUpdate.UserStatus -eq 'AlreadyPresent') {
+}
+elseif ($pathUpdate.UserStatus -eq 'AlreadyPresent') {
     Write-Success 'git-ai already present in the user PATH.'
-} elseif ($pathUpdate.UserStatus -eq 'Error') {
+}
+elseif ($pathUpdate.UserStatus -eq 'Error') {
     Write-Host 'Failed to update the user PATH.' -ForegroundColor Red
+}
+
+if ($pathUpdate.MachineStatus -eq 'Updated') {
+    Write-Success 'Successfully added git-ai to the system PATH.'
+}
+elseif ($pathUpdate.MachineStatus -eq 'AlreadyPresent') {
+    Write-Success 'git-ai already present in the system PATH.'
+}
+elseif ($pathUpdate.MachineStatus -eq 'Error') {
+    Write-Host 'PATH update failed: system PATH unchanged.' -ForegroundColor Red
 }
 
 Write-Success "Successfully installed git-ai into $installDir"
@@ -564,10 +631,8 @@ $gitBashAlreadyConfigured = $false
 try {
     $bashrcPath = Join-Path $HOME '.bashrc'
     $bashProfilePath = Join-Path $HOME '.bash_profile'
-    $driveLetter = $installDir.Substring(0, 1).ToLower()
-    $msys2InstallDir = '/' + $driveLetter + ($installDir.Substring(2) -replace '\\', '/')
-    $pathCmd = "export PATH=`"$msys2InstallDir`:`$PATH`""
-    $markerString = 'git-ai/bin'
+    $pathCmd = 'export PATH="$HOME/.git-ai/bin:$PATH"'
+    $markerString = '.git-ai/bin'
 
     # Detect if Git Bash is installed
     $gitBashInstalled = $false
@@ -587,9 +652,11 @@ try {
         $targetBashConfig = $null
         if (Test-Path -LiteralPath $bashrcPath) {
             $targetBashConfig = $bashrcPath
-        } elseif (Test-Path -LiteralPath $bashProfilePath) {
+        }
+        elseif (Test-Path -LiteralPath $bashProfilePath) {
             $targetBashConfig = $bashProfilePath
-        } else {
+        }
+        else {
             # No existing config; create .bashrc
             $targetBashConfig = $bashrcPath
         }
@@ -605,7 +672,8 @@ try {
 
         if ($alreadyPresent) {
             $gitBashAlreadyConfigured = $true
-        } else {
+        }
+        else {
             $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
             $appendContent = "`n# Added by git-ai installer on $timestamp`n$pathCmd`n"
             $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -613,19 +681,21 @@ try {
             $gitBashConfigured = $true
         }
     }
-} catch {
+}
+catch {
     Write-Host "Warning: Failed to configure Git Bash: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 if ($gitBashConfigured) {
     Write-Success "Successfully configured Git Bash ($targetBashConfig)"
-} elseif ($gitBashAlreadyConfigured) {
+}
+elseif ($gitBashAlreadyConfigured) {
     Write-Success "Git Bash already configured ($targetBashConfig)"
 }
 
 # Write JSON config at %USERPROFILE%\.git-ai\config.json (only if it doesn't exist)
 try {
-    $configDir = Join-Path $env:ProgramFiles 'git-ai'
+    $configDir = Join-Path $HOME '.git-ai'
     $configJsonPath = Join-Path $configDir 'config.json'
     New-Item -ItemType Directory -Force -Path $configDir | Out-Null
 
