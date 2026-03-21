@@ -82,6 +82,9 @@ pub struct Config {
     api_key: Option<String>,
     quiet: bool,
     custom_attributes: HashMap<String, String>,
+    otel_endpoint: Option<String>,
+    #[serde(serialize_with = "serialize_masked_api_key")]
+    otel_bearer_token: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize)]
@@ -151,6 +154,10 @@ pub struct FileConfig {
     pub quiet: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub custom_attributes: Option<HashMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub otel_endpoint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub otel_bearer_token: Option<String>,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -398,6 +405,16 @@ impl Config {
         &self.custom_attributes
     }
 
+    /// Returns the OTel endpoint URL if configured (from env var GIT_AI_OTEL_ENDPOINT or config file).
+    pub fn otel_endpoint(&self) -> Option<&str> {
+        self.otel_endpoint.as_deref()
+    }
+
+    /// Returns the OTel bearer token if configured (from env var GIT_AI_OTEL_BEARER_TOKEN or config file).
+    pub fn otel_bearer_token(&self) -> Option<&str> {
+        self.otel_bearer_token.as_deref()
+    }
+
     /// Serialize the effective runtime config into pretty JSON.
     /// Sensitive values are redacted via field serializers.
     pub fn to_printable_json_pretty(&self) -> Result<String, String> {
@@ -627,6 +644,28 @@ fn build_config() -> Config {
     // Get quiet setting (defaults to false)
     let quiet = file_cfg.as_ref().and_then(|c| c.quiet).unwrap_or(false);
 
+    // Get OTel endpoint from env var or config file (env var takes precedence)
+    let otel_endpoint = env::var("GIT_AI_OTEL_ENDPOINT")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            file_cfg
+                .as_ref()
+                .and_then(|c| c.otel_endpoint.clone())
+                .filter(|s| !s.is_empty())
+        });
+
+    // Get OTel bearer token from env var or config file (env var takes precedence)
+    let otel_bearer_token = env::var("GIT_AI_OTEL_BEARER_TOKEN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            file_cfg
+                .as_ref()
+                .and_then(|c| c.otel_bearer_token.clone())
+                .filter(|s| !s.is_empty())
+        });
+
     // Build custom attributes: file config as base, env var overrides
     let custom_attributes = build_custom_attributes(&file_cfg);
 
@@ -650,6 +689,8 @@ fn build_config() -> Config {
             api_key,
             quiet,
             custom_attributes: custom_attributes.clone(),
+            otel_endpoint: otel_endpoint.clone(),
+            otel_bearer_token: otel_bearer_token.clone(),
         };
         apply_test_config_patch(&mut config);
         config
@@ -674,6 +715,8 @@ fn build_config() -> Config {
         api_key,
         quiet,
         custom_attributes,
+        otel_endpoint,
+        otel_bearer_token,
     }
 }
 
@@ -989,6 +1032,8 @@ mod tests {
             api_key: None,
             quiet: false,
             custom_attributes: HashMap::new(),
+            otel_endpoint: None,
+            otel_bearer_token: None,
         }
     }
 
@@ -1097,6 +1142,8 @@ mod tests {
             api_key: None,
             quiet: false,
             custom_attributes: HashMap::new(),
+            otel_endpoint: None,
+            otel_bearer_token: None,
         }
     }
 
@@ -1214,6 +1261,8 @@ mod tests {
             api_key: None,
             quiet: false,
             custom_attributes: HashMap::new(),
+            otel_endpoint: None,
+            otel_bearer_token: None,
         }
     }
 
