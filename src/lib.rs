@@ -11,5 +11,6 @@ pub mod git;
 pub mod mdm;
 pub mod metrics;
 pub mod observability;
+pub mod otel;
 pub mod repo_url;
 pub mod utils;

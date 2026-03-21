@@ -112,6 +112,8 @@ fn print_config_help() {
     eprintln!("  default_prompt_storage       Fallback storage mode for non-included repos");
     eprintln!("  quiet                        Suppress chart output after commits (bool)");
     eprintln!("  git_ai_hooks                 Hook name -> shell commands map (object)");
+    eprintln!("  otel_endpoint                OTel Collector base URL for Prometheus/Grafana (string)");
+    eprintln!("  otel_bearer_token            Bearer token for OTel endpoint Authorization header (string)");
     eprintln!();
     eprintln!("Repository Patterns:");
     eprintln!("  For exclude/allow/exclude_prompts_in_repositories, you can provide:");
@@ -312,6 +314,14 @@ fn show_all_config() -> Result<(), String> {
         serde_json::to_value(runtime_config.git_ai_hooks())
             .unwrap_or_else(|_| Value::Object(serde_json::Map::new())),
     );
+    
+    if let Some(endpoint) = runtime_config.otel_endpoint() {
+        effective_config.insert("otel_endpoint".to_string(), Value::String(endpoint.to_string()));
+    }
+
+    if runtime_config.otel_bearer_token().is_some() {
+        effective_config.insert("otel_bearer_token".to_string(), Value::String("****".to_string()));
+    }
 
     // Feature flags - show effective flags with defaults applied
     let flags_value = serde_json::to_value(runtime_config.get_feature_flags())
@@ -403,6 +413,20 @@ fn get_config_value(key: &str) -> Result<(), String> {
             "quiet" => Value::Bool(runtime_config.is_quiet()),
             "git_ai_hooks" => serde_json::to_value(runtime_config.git_ai_hooks())
                 .unwrap_or_else(|_| Value::Object(serde_json::Map::new())),
+            "otel_endpoint" => {
+                if let Some(endpoint) = runtime_config.otel_endpoint() {
+                    Value::String(endpoint.to_string())
+                } else {
+                    Value::Null
+                }
+            }
+            "otel_bearer_token" => {
+                if let Some(token) = file_config.otel_bearer_token.as_deref() {
+                    Value::String(mask_api_key(token))
+                } else {
+                    Value::Null
+                }
+            }
             _ => return Err(format!("Unknown config key: {}", key)),
         };
 
@@ -575,6 +599,16 @@ fn set_config_value(key: &str, value: &str, add_mode: bool) -> Result<(), String
                 file_config.git_ai_hooks = Some(parse_git_ai_hooks_object(value)?);
                 crate::config::save_file_config(&file_config)?;
                 eprintln!("[git_ai_hooks]: {}", value);
+            }
+            "otel_endpoint" => {
+                file_config.otel_endpoint = Some(value.to_string());
+                crate::config::save_file_config(&file_config)?;
+                eprintln!("[otel_endpoint]: {}", value);
+            }
+            "otel_bearer_token" => {
+                file_config.otel_bearer_token = Some(value.to_string());
+                crate::config::save_file_config(&file_config)?;
+                eprintln!("[otel_bearer_token]: ****");
             }
             _ => return Err(format!("Unknown config key: {}", key)),
         }
@@ -786,6 +820,20 @@ fn unset_config_value(key: &str) -> Result<(), String> {
                 crate::config::save_file_config(&file_config)?;
                 if let Some(v) = old_value {
                     eprintln!("- [git_ai_hooks]: {:?}", v);
+                }
+            }
+            "otel_endpoint" => {
+                let old_value = file_config.otel_endpoint.take();
+                crate::config::save_file_config(&file_config)?;
+                if let Some(v) = old_value {
+                    eprintln!("- [otel_endpoint]: {}", v);
+                }
+            }
+            "otel_bearer_token" => {
+                let had_token = file_config.otel_bearer_token.take().is_some();
+                crate::config::save_file_config(&file_config)?;
+                if had_token {
+                    eprintln!("- [otel_bearer_token]: ****");
                 }
             }
             _ => return Err(format!("Unknown config key: {}", key)),
