@@ -795,7 +795,10 @@ fn send_metrics_events(events: &[MetricEvent], uploader: &MetricsUploader) -> bo
         && let Some(client) = &uploader.client
     {
         match upload_metrics_with_retry(client, &batch, "flush_logs") {
-            Ok(()) => return true,
+            Ok(()) => {
+                forward_to_otel(events);
+                return true;
+            }
             Err(_) => {
                 store_metrics_in_db(events);
                 return true;
@@ -803,8 +806,23 @@ fn send_metrics_events(events: &[MetricEvent], uploader: &MetricsUploader) -> bo
         }
     }
 
+    // Not uploaded to API — still forward to OTel if configured
+    forward_to_otel(events);
     store_metrics_in_db(events);
     true
+}
+
+/// Forward metrics events to the OTel endpoint if one is configured.
+fn forward_to_otel(events: &[MetricEvent]) {
+    let config = Config::get();
+    let Some(endpoint) = config.otel_endpoint() else {
+        return;
+    };
+    let bearer_token = config.otel_bearer_token();
+    match crate::otel::send_to_otel(endpoint, bearer_token, events) {
+        Ok(()) => {}
+        Err(e) => eprintln!("[otel] {}", e),
+    }
 }
 
 /// Store metric events in SQLite database for later upload
