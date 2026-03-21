@@ -13,6 +13,7 @@ pub mod mdm;
 pub mod metrics;
 pub mod notes;
 pub mod observability;
+pub mod otel;
 pub mod repo_url;
 pub mod transcripts;
 pub mod utils;

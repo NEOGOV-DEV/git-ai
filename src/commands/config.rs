@@ -86,61 +86,53 @@ fn resolve_path_to_remotes(path: &str) -> Result<Vec<String>, String> {
 }
 
 fn print_config_help() {
-    println!("git-ai config - View and manage git-ai configuration");
-    println!();
-    println!("Usage:");
-    println!("  git-ai config                Show all config as formatted JSON");
-    println!("  git-ai config <key>          Show specific config value");
-    println!("  git-ai config set <key> <value>          Set a config value");
-    println!("  git-ai config set <key> <value> --add    Add to array (extends existing)");
-    println!("  git-ai config --add <key> <value>        Add to array or upsert into object");
-    println!("  git-ai config unset <key>    Remove config value (reverts to default)");
-    println!();
-    println!("Configuration Keys:");
-    println!("  git_path                     Path to git binary");
-    println!("  exclude_prompts_in_repositories  Repos to exclude prompts from (array)");
-    println!("  allow_repositories           Allowed repos (array)");
-    println!("  exclude_repositories         Excluded repos (array)");
-    println!("  telemetry_oss                OSS telemetry setting (on/off)");
-    println!("  telemetry_enterprise_dsn     Enterprise telemetry DSN");
-    println!("  disable_version_checks       Disable version checks (bool)");
-    println!("  disable_auto_updates         Disable auto updates (bool)");
-    println!("  update_channel               Update channel (latest/next)");
-    println!("  feature_flags                Feature flags (object)");
-    println!("  api_key                      API key for X-API-Key header");
-    println!("  prompt_storage               Prompt storage mode (default/notes/local)");
-    println!("  include_prompts_in_repositories  Repos to include for prompt storage (array)");
-    println!("  default_prompt_storage       Fallback storage mode for non-included repos");
-    println!("  quiet                        Suppress chart output after commits (bool)");
-    println!("  git_ai_hooks                 Hook name -> shell commands map (object)");
-    println!("  notes_backend.kind           Notes backend kind (git_notes/http)");
-    println!("  notes_backend.backend_url    Notes backend base URL. Required when kind=http.");
-    println!(
-        "                               May include a path prefix; endpoints are appended to it."
-    );
-    println!(
-        "                               e.g. \"https://app.example.com/api/gitai\" -> requests are"
-    );
-    println!("                               sent to \"<base>/worker/notes/upload\" and");
-    println!("                               \"<base>/worker/notes/?commits=...\".");
-    println!();
-    println!("Repository Patterns:");
-    println!("  For exclude/allow/exclude_prompts_in_repositories, you can provide:");
-    println!("    - A glob pattern: \"*\", \"https://github.com/org/*\"");
-    println!("    - A URL/git protocol: \"git@github.com:org/repo.git\"");
-    println!("    - A file path: \".\" or \"/path/to/repo\" (resolves to repo's remotes)");
-    println!();
-    println!("Examples:");
-    println!("  git-ai config exclude_repositories");
-    println!("  git-ai config set disable_auto_updates true");
-    println!("  git-ai config set exclude_repositories \"private/*\"");
-    println!("  git-ai config set exclude_repositories .         # Uses current repo's remotes");
-    println!("  git-ai config --add exclude_repositories \"temp/*\"");
-    println!("  git-ai config --add allow_repositories ~/projects/my-repo");
-    println!("  git-ai config --add feature_flags.my_flag true");
-    println!("  git-ai config --add git_ai_hooks.post_notes_updated \"./my-hook.sh\"");
-    println!("  git-ai config unset exclude_repositories");
-    println!();
+    eprintln!("git-ai config - View and manage git-ai configuration");
+    eprintln!();
+    eprintln!("Usage:");
+    eprintln!("  git-ai config                Show all config as formatted JSON");
+    eprintln!("  git-ai config <key>          Show specific config value");
+    eprintln!("  git-ai config set <key> <value>          Set a config value");
+    eprintln!("  git-ai config set <key> <value> --add    Add to array (extends existing)");
+    eprintln!("  git-ai config --add <key> <value>        Add to array or upsert into object");
+    eprintln!("  git-ai config unset <key>    Remove config value (reverts to default)");
+    eprintln!();
+    eprintln!("Configuration Keys:");
+    eprintln!("  git_path                     Path to git binary");
+    eprintln!("  exclude_prompts_in_repositories  Repos to exclude prompts from (array)");
+    eprintln!("  allow_repositories           Allowed repos (array)");
+    eprintln!("  exclude_repositories         Excluded repos (array)");
+    eprintln!("  telemetry_oss                OSS telemetry setting (on/off)");
+    eprintln!("  telemetry_enterprise_dsn     Enterprise telemetry DSN");
+    eprintln!("  disable_version_checks       Disable version checks (bool)");
+    eprintln!("  disable_auto_updates         Disable auto updates (bool)");
+    eprintln!("  update_channel               Update channel (latest/next)");
+    eprintln!("  feature_flags                Feature flags (object)");
+    eprintln!("  api_key                      API key for X-API-Key header");
+    eprintln!("  prompt_storage               Prompt storage mode (default/notes/local)");
+    eprintln!("  include_prompts_in_repositories  Repos to include for prompt storage (array)");
+    eprintln!("  default_prompt_storage       Fallback storage mode for non-included repos");
+    eprintln!("  quiet                        Suppress chart output after commits (bool)");
+    eprintln!("  git_ai_hooks                 Hook name -> shell commands map (object)");
+    eprintln!("  otel_endpoint                OTel Collector base URL for Prometheus/Grafana (string)");
+    eprintln!("  otel_bearer_token            Bearer token for OTel endpoint Authorization header (string)");
+    eprintln!();
+    eprintln!("Repository Patterns:");
+    eprintln!("  For exclude/allow/exclude_prompts_in_repositories, you can provide:");
+    eprintln!("    - A glob pattern: \"*\", \"https://github.com/org/*\"");
+    eprintln!("    - A URL/git protocol: \"git@github.com:org/repo.git\"");
+    eprintln!("    - A file path: \".\" or \"/path/to/repo\" (resolves to repo's remotes)");
+    eprintln!();
+    eprintln!("Examples:");
+    eprintln!("  git-ai config exclude_repositories");
+    eprintln!("  git-ai config set disable_auto_updates true");
+    eprintln!("  git-ai config set exclude_repositories \"private/*\"");
+    eprintln!("  git-ai config set exclude_repositories .         # Uses current repo's remotes");
+    eprintln!("  git-ai config --add exclude_repositories \"temp/*\"");
+    eprintln!("  git-ai config --add allow_repositories ~/projects/my-repo");
+    eprintln!("  git-ai config --add feature_flags.my_flag true");
+    eprintln!("  git-ai config --add git_ai_hooks.post_notes_updated \"./my-hook.sh\"");
+    eprintln!("  git-ai config unset exclude_repositories");
+    eprintln!();
     std::process::exit(0);
 }
 
@@ -328,6 +320,14 @@ fn show_all_config() -> Result<(), String> {
         serde_json::to_value(runtime_config.git_ai_hooks())
             .unwrap_or_else(|_| Value::Object(serde_json::Map::new())),
     );
+    
+    if let Some(endpoint) = runtime_config.otel_endpoint() {
+        effective_config.insert("otel_endpoint".to_string(), Value::String(endpoint.to_string()));
+    }
+
+    if runtime_config.otel_bearer_token().is_some() {
+        effective_config.insert("otel_bearer_token".to_string(), Value::String("****".to_string()));
+    }
 
     // Feature flags - show effective flags with defaults applied
     let flags_value = serde_json::to_value(runtime_config.get_feature_flags())
@@ -433,17 +433,19 @@ fn get_config_value(key: &str) -> Result<(), String> {
             "quiet" => Value::Bool(runtime_config.is_quiet()),
             "git_ai_hooks" => serde_json::to_value(runtime_config.git_ai_hooks())
                 .unwrap_or_else(|_| Value::Object(serde_json::Map::new())),
-            "notes_backend" => {
-                let nb = runtime_config.notes_backend();
-                let mut map = serde_json::Map::new();
-                map.insert(
-                    "kind".to_string(),
-                    Value::String(nb.kind.as_str().to_string()),
-                );
-                if let Some(ref url) = nb.backend_url {
-                    map.insert("backend_url".to_string(), Value::String(url.clone()));
+            "otel_endpoint" => {
+                if let Some(endpoint) = runtime_config.otel_endpoint() {
+                    Value::String(endpoint.to_string())
+                } else {
+                    Value::Null
                 }
-                Value::Object(map)
+            }
+            "otel_bearer_token" => {
+                if let Some(token) = file_config.otel_bearer_token.as_deref() {
+                    Value::String(mask_api_key(token))
+                } else {
+                    Value::Null
+                }
             }
             _ => return Err(format!("Unknown config key: {}", key)),
         };
@@ -643,6 +645,16 @@ fn set_config_value(key: &str, value: &str, add_mode: bool) -> Result<(), String
                 file_config.git_ai_hooks = Some(parse_git_ai_hooks_object(value)?);
                 crate::config::save_file_config(&file_config)?;
                 println!("[git_ai_hooks]: {}", value);
+            }
+            "otel_endpoint" => {
+                file_config.otel_endpoint = Some(value.to_string());
+                crate::config::save_file_config(&file_config)?;
+                eprintln!("[otel_endpoint]: {}", value);
+            }
+            "otel_bearer_token" => {
+                file_config.otel_bearer_token = Some(value.to_string());
+                crate::config::save_file_config(&file_config)?;
+                eprintln!("[otel_bearer_token]: ****");
             }
             _ => return Err(format!("Unknown config key: {}", key)),
         }
@@ -885,6 +897,20 @@ fn unset_config_value(key: &str) -> Result<(), String> {
                 crate::config::save_file_config(&file_config)?;
                 if let Some(v) = old_value {
                     println!("- [git_ai_hooks]: {:?}", v);
+                }
+            }
+            "otel_endpoint" => {
+                let old_value = file_config.otel_endpoint.take();
+                crate::config::save_file_config(&file_config)?;
+                if let Some(v) = old_value {
+                    eprintln!("- [otel_endpoint]: {}", v);
+                }
+            }
+            "otel_bearer_token" => {
+                let had_token = file_config.otel_bearer_token.take().is_some();
+                crate::config::save_file_config(&file_config)?;
+                if had_token {
+                    eprintln!("- [otel_bearer_token]: ****");
                 }
             }
             _ => return Err(format!("Unknown config key: {}", key)),
