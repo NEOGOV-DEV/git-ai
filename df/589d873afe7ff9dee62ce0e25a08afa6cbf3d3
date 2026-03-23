@@ -1,0 +1,96 @@
+src/config.rs
+  c87f287a87537e00 1074,1185,1305
+  379af729b9aa558b 86,158,160,420-424,659-669,683-706,729,756
+  25c1787d479fec92 87-88,161-162,410-419,425-429,670-680,730,757,1075,1186,1306
+src/lib.rs
+  379af729b9aa558b 13
+src/observability/flush.rs
+  379af729b9aa558b 798-801,809-810,815-816,819-820,823-825
+  25c1787d479fec92 817-818,821-822
+src/otel.rs
+  379af729b9aa558b 1-101,103-110,112-115,131-160,166-182,187-191,193-195,197-212,221-223,225-226,233-246,248-249,262-268,270-276,278-333,358-380,383,390,392-401,403-408,416-423,425-426
+  c87f287a87537e00 102,111,247
+  25c1787d479fec92 116-130,183-186,192,196,213-214,224,227-232,250-261,269,277,334-357,381-382,389,391,402,410-415
+src/commands/config.rs
+  25c1787d479fec92 329,334-335,433-439,604-611,618-622,826-832,842-848,904-923,926-933
+  379af729b9aa558b 322,327-328,426-432,613-617,676-709,835-841,1031-1093,1194-1222
+src/commands/git_ai_handlers.rs
+  b1939289c3418faa 711,835
+src/commands/flush_metrics_db.rs
+  25c1787d479fec92 139-142,147
+  379af729b9aa558b 137-138,145-146,148-149
+src/ci/github.rs
+  6137d1de39afa92e 213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.1.13",
+  "base_commit_sha": "df589d873afe7ff9dee62ce0e25a08afa6cbf3d3",
+  "prompts": {
+    "25c1787d479fec92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18616e2f-f947-4e3e-84dc-83a5a47dad32",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 143,
+      "total_deletions": 20,
+      "accepted_lines": 188,
+      "overriden_lines": 0
+    },
+    "379af729b9aa558b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b9329f-f09a-473c-993b-ed681d6439ff",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 415,
+      "total_deletions": 1,
+      "accepted_lines": 539,
+      "overriden_lines": 0
+    },
+    "6137d1de39afa92e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a354ebb-16db-4aa6-a05e-5deb1e3441ca",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 3,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "b1939289c3418faa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eccf75b6-34c4-426e-b31d-49df690aeb7d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 6,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "c87f287a87537e00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "787561c4-7c58-405f-acbf-0666b424a1e8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 1,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
