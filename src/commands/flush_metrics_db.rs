@@ -140,7 +140,8 @@ pub fn handle_flush_metrics_db(_args: &[String]) {
             let otel_config = crate::config::Config::get();
             if let Some(otel_endpoint) = otel_config.otel_endpoint() {
                 let bearer_token = otel_config.otel_bearer_token();
-                match crate::otel::send_to_otel(otel_endpoint, bearer_token, &metrics_batch.events) {
+                match crate::otel::send_to_otel(otel_endpoint, bearer_token, &metrics_batch.events)
+                {
                     Ok(()) => user_log!("  ✓ otel - forwarded batch to {}", otel_endpoint),
                     Err(e) => user_log!("  ✗ otel - {}", e),
                 }

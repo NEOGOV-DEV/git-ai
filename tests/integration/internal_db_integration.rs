@@ -463,7 +463,7 @@ fn test_human_author_saved_to_db_after_commit() {
     );
     assert_eq!(
         prompt.human_author.as_ref().unwrap(),
-        "Test User",
+        "Test User <test@example.com>",
         "Human author should match git config"
     );
 }

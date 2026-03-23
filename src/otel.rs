@@ -158,7 +158,11 @@ fn sparse_u32(map: &HashMap<String, Value>, pos: usize) -> u32 {
 fn sparse_vec_u32(map: &HashMap<String, Value>, pos: usize) -> Vec<u32> {
     map.get(&pos.to_string())
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as u32)).collect())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_u64().map(|n| n as u32))
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -208,7 +212,12 @@ fn aggregate(
                 let repo_url = sparse_str(&event.attrs, 1 /* REPO_URL */);
                 let author = sparse_str(&event.attrs, 2 /* AUTHOR */);
                 let user_email = extract_email(&author).to_string();
-                let labels = MetricLabels { agent, model, repo_url, user_email };
+                let labels = MetricLabels {
+                    agent,
+                    model,
+                    repo_url,
+                    user_email,
+                };
                 *generated.entry(labels).or_default() += lines_added as i64;
             }
 
@@ -372,7 +381,11 @@ fn build_payload(
 /// `bearer_token` is an optional Authorization: Bearer token for the endpoint.
 ///
 /// Returns `Ok(())` on HTTP 2xx, `Err(message)` otherwise.
-pub fn send_to_otel(endpoint: &str, bearer_token: Option<&str>, events: &[MetricEvent]) -> Result<(), String> {
+pub fn send_to_otel(
+    endpoint: &str,
+    bearer_token: Option<&str>,
+    events: &[MetricEvent],
+) -> Result<(), String> {
     let (generated, accepted, human) = aggregate(events);
 
     if generated.is_empty() && accepted.is_empty() && human.is_empty() {
@@ -393,8 +406,7 @@ pub fn send_to_otel(endpoint: &str, bearer_token: Option<&str>, events: &[Metric
 
     let url = format!("{}/v1/metrics", endpoint.trim_end_matches('/'));
 
-    let mut request = minreq::post(&url)
-        .with_header("Content-Type", "application/json");
+    let mut request = minreq::post(&url).with_header("Content-Type", "application/json");
 
     if let Some(token) = bearer_token {
         request = request.with_header("Authorization", format!("Bearer {}", token));
@@ -409,9 +421,6 @@ pub fn send_to_otel(endpoint: &str, bearer_token: Option<&str>, events: &[Metric
     if (200..300).contains(&status) {
         Ok(())
     } else {
-        Err(format!(
-            "otel: endpoint {} returned HTTP {}",
-            url, status
-        ))
+        Err(format!("otel: endpoint {} returned HTTP {}", url, status))
     }
 }
