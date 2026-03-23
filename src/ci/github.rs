@@ -201,6 +201,9 @@ pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
     let otel_endpoint = flag("--otel-endpoint")
         .or_else(|| crate::config::Config::get().otel_endpoint().map(str::to_string));
 
+    let otel_bearer_token = flag("--otel-bearer-token")
+        .or_else(|| crate::config::Config::get().otel_bearer_token().map(str::to_string));
+
     // --- Validate required inputs ---
     if after_sha.is_empty() {
         return Err(GitAiError::Generic(
@@ -342,7 +345,7 @@ pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
 
     // --- Send to OTel ---
     println!("Sending {} event(s) to {}...", events.len(), otel_endpoint);
-    crate::otel::send_to_otel(&otel_endpoint, &events).map_err(GitAiError::Generic)?;
+    crate::otel::send_to_otel(&otel_endpoint, otel_bearer_token.as_deref(), &events).map_err(GitAiError::Generic)?;
     println!("Done.");
 
     Ok(events.len())
