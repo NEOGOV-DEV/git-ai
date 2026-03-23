@@ -112,8 +112,12 @@ fn print_config_help() {
     eprintln!("  default_prompt_storage       Fallback storage mode for non-included repos");
     eprintln!("  quiet                        Suppress chart output after commits (bool)");
     eprintln!("  git_ai_hooks                 Hook name -> shell commands map (object)");
-    eprintln!("  otel_endpoint                OTel Collector base URL for Prometheus/Grafana (string)");
-    eprintln!("  otel_bearer_token            Bearer token for OTel endpoint Authorization header (string)");
+    eprintln!(
+        "  otel_endpoint                OTel Collector base URL for Prometheus/Grafana (string)"
+    );
+    eprintln!(
+        "  otel_bearer_token            Bearer token for OTel endpoint Authorization header (string)"
+    );
     eprintln!();
     eprintln!("Repository Patterns:");
     eprintln!("  For exclude/allow/exclude_prompts_in_repositories, you can provide:");
@@ -316,11 +320,17 @@ fn show_all_config() -> Result<(), String> {
     );
     
     if let Some(endpoint) = runtime_config.otel_endpoint() {
-        effective_config.insert("otel_endpoint".to_string(), Value::String(endpoint.to_string()));
+        effective_config.insert(
+            "otel_endpoint".to_string(),
+            Value::String(endpoint.to_string()),
+        );
     }
 
     if runtime_config.otel_bearer_token().is_some() {
-        effective_config.insert("otel_bearer_token".to_string(), Value::String("****".to_string()));
+        effective_config.insert(
+            "otel_bearer_token".to_string(),
+            Value::String("****".to_string()),
+        );
     }
 
     // Feature flags - show effective flags with defaults applied

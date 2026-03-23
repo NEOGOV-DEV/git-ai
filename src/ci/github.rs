@@ -160,12 +160,13 @@ pub fn install_github_push_metrics_workflow() -> Result<PathBuf, GitAiError> {
 ///   GITHUB_BEFORE      – SHA before the push (all-zeros for new branches)
 ///   GITHUB_SHA         – SHA after the push
 ///   GITHUB_REF_NAME    – branch name
-///   GITHUB_SERVER_URL  – e.g. https://github.com
+///   GITHUB_SERVER_URL  – e.g. <https://github.com>
 ///   GITHUB_REPOSITORY  – e.g. org/repo
 ///   GIT_AI_OTEL_ENDPOINT – OTel collector base URL
+///   GIT_AI_OTEL_BEARER_TOKEN – OTel bearer token
 ///
 /// All values can be overridden with --before, --after, --branch, --repo-url,
-/// --otel-endpoint flags.
+/// --otel-endpoint, --otel-bearer-token flags.
 pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
     // --- Flag helpers ---
     let flag = |name: &str| -> Option<String> {
@@ -198,11 +199,17 @@ pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
         Some(format!("{}/{}", server, repository))
     });
 
-    let otel_endpoint = flag("--otel-endpoint")
-        .or_else(|| crate::config::Config::get().otel_endpoint().map(str::to_string));
+    let otel_endpoint = flag("--otel-endpoint").or_else(|| {
+        crate::config::Config::get()
+            .otel_endpoint()
+            .map(str::to_string)
+    });
 
-    let otel_bearer_token = flag("--otel-bearer-token")
-        .or_else(|| crate::config::Config::get().otel_bearer_token().map(str::to_string));
+    let otel_bearer_token = flag("--otel-bearer-token").or_else(|| {
+        crate::config::Config::get()
+            .otel_bearer_token()
+            .map(str::to_string)
+    });
 
     // --- Validate required inputs ---
     if after_sha.is_empty() {
@@ -221,7 +228,11 @@ pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
 
     println!(
         "git-ai metrics: {}..{} branch={} repo={}",
-        if before_sha.is_empty() { "(none)" } else { &before_sha },
+        if before_sha.is_empty() {
+            "(none)"
+        } else {
+            &before_sha
+        },
         &after_sha,
         branch,
         repo_url,
@@ -345,7 +356,8 @@ pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
 
     // --- Send to OTel ---
     println!("Sending {} event(s) to {}...", events.len(), otel_endpoint);
-    crate::otel::send_to_otel(&otel_endpoint, otel_bearer_token.as_deref(), &events).map_err(GitAiError::Generic)?;
+    crate::otel::send_to_otel(&otel_endpoint, otel_bearer_token.as_deref(), &events)
+        .map_err(GitAiError::Generic)?;
     println!("Done.");
 
     Ok(events.len())

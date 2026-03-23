@@ -359,12 +359,22 @@ fn print_ci_github_help_and_exit() -> ! {
     eprintln!("                       --no-cleanup  Skip teardown after run");
     eprintln!("  install              Install/update PR-authorship workflow in current repo");
     eprintln!("  metrics              Push AI stats for commits in a push to OTel");
-    eprintln!("                       --before <sha>        SHA before push (default: GITHUB_BEFORE)");
+    eprintln!(
+        "                       --before <sha>        SHA before push (default: GITHUB_BEFORE)"
+    );
     eprintln!("                       --after <sha>         SHA after push  (default: GITHUB_SHA)");
-    eprintln!("                       --branch <name>       Branch name     (default: GITHUB_REF_NAME)");
-    eprintln!("                       --repo-url <url>      Repo URL        (default: GITHUB_SERVER_URL/GITHUB_REPOSITORY)");
-    eprintln!("                       --otel-endpoint <url> OTel base URL   (default: GIT_AI_OTEL_ENDPOINT / config)");
-    eprintln!("  metrics install      Install push-metrics workflow to .github/workflows/git-ai-metrics.yaml");
+    eprintln!(
+        "                       --branch <name>       Branch name     (default: GITHUB_REF_NAME)"
+    );
+    eprintln!(
+        "                       --repo-url <url>      Repo URL        (default: GITHUB_SERVER_URL/GITHUB_REPOSITORY)"
+    );
+    eprintln!(
+        "                       --otel-endpoint <url> OTel base URL   (default: GIT_AI_OTEL_ENDPOINT / config)"
+    );
+    eprintln!(
+        "  metrics install      Install push-metrics workflow to .github/workflows/git-ai-metrics.yaml"
+    );
     std::process::exit(1);
 }
 
