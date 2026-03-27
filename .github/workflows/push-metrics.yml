@@ -17,18 +17,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Run install.sh with local binary
-        env:
-          GIT_AI_LOCAL_BINARY: ${{ github.workspace }}/target/release/git-ai
-        run: |
-          chmod +x ./install.sh
-          ./install.sh
-          echo "$HOME/.git-ai/bin" >> $GITHUB_PATH
 
       - name: Fetch git-ai authorship notes
         run: |
           git fetch origin 'refs/notes/*:refs/notes/*' || true
+
+      - name: Install git-ai
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/NEOGOV-DEV/git-ai/refs/heads/main/install.sh | bash
+          echo "$HOME/.git-ai/bin" >> $GITHUB_PATH
 
       - name: Push AI metrics to OTel
         env:
