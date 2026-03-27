@@ -426,7 +426,7 @@ impl Config {
     pub fn git_ai_hook_commands(&self, hook_name: &str) -> Option<&Vec<String>> {
         self.git_ai_hooks.get(hook_name)
     }
-    
+
     /// Returns the OTel endpoint URL if configured (from env var GIT_AI_OTEL_ENDPOINT or config file).
     pub fn otel_endpoint(&self) -> Option<&str> {
         self.otel_endpoint.as_deref()

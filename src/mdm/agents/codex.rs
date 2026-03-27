@@ -415,6 +415,7 @@ notify = ["notify-send", "Codex"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer
@@ -466,6 +467,7 @@ notify = ["notify-send", "Codex"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer
@@ -494,6 +496,7 @@ notify = ["notify-send", "Codex"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             // First install (real write).
@@ -532,6 +535,7 @@ notify = ["/usr/local/bin/git-ai", "checkpoint", "codex", "--hook-input", "afpla
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let result = installer
@@ -577,6 +581,7 @@ notify = ["/tmp/git-ai", "checkpoint", "codex", "--hook-input", "--verbose"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let result = installer
@@ -622,6 +627,7 @@ notify = ["/usr/local/bin/git-ai", "checkpoint", "codex", "--hook-input"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer
