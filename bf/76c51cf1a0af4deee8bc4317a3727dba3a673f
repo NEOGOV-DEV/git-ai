@@ -1,0 +1,23 @@
+src/mdm/agents/claude_code.rs
+  266e851facd5d547 67-68,112-113,115-116,288-289,727-729,732-733,735-737,739-742,747-752,762-763,765-769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.20",
+  "base_commit_sha": "bf76c51cf1a0af4deee8bc4317a3727dba3a673f",
+  "prompts": {
+    "266e851facd5d547": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "484ef36a-1fe2-4f3e-a645-9fb6fbf21c86",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 40,
+      "total_deletions": 5,
+      "accepted_lines": 33,
+      "overriden_lines": 5
+    }
+  }
+}
