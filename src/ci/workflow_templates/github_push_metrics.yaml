@@ -24,7 +24,7 @@ jobs:
 
       - name: Install git-ai
         run: |
-          curl -fsSL https://raw.githubusercontent.com/NEOGOV-DEV/git-ai/refs/heads/main/install.sh | bash
+          curl -fsSL https://raw.githubusercontent.com/ngv-dev/git-ai/refs/heads/main/install.sh | bash
           echo "$HOME/.git-ai/bin" >> $GITHUB_PATH
 
       - name: Push AI metrics to OTel
