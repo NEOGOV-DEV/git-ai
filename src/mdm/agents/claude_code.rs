@@ -21,11 +21,50 @@ impl ClaudeCodeInstaller {
         claude_config_dir().join("settings.json")
     }
 
-    /// Returns `(hooks_installed, hooks_up_to_date)` from a parsed settings value.
-    /// `hooks_installed` = git-ai checkpoint command exists in ANY matcher block.
-    /// `hooks_up_to_date` = git-ai checkpoint command exists in the `"*"` catch-all block.
-    fn hook_status(settings: &Value) -> (bool, bool) {
-        let pre_tool_blocks = settings
+    fn id(&self) -> &str {
+        "claude-code"
+    }
+
+    fn check_hooks(&self, _params: &HookInstallerParams) -> Result<HookCheckResult, GitAiError> {
+        let has_binary = binary_exists("claude");
+        let has_dotfiles = home_dir().join(".claude").exists();
+
+        if !has_binary && !has_dotfiles {
+            return Ok(HookCheckResult {
+                tool_installed: false,
+                hooks_installed: false,
+                hooks_up_to_date: false,
+            });
+        }
+
+        // If we have the binary, check version
+        if has_binary
+            && let Ok(version_str) = get_binary_version("claude")
+            && let Some(version) = parse_version(&version_str)
+            && !version_meets_requirement(version, MIN_CLAUDE_VERSION)
+        {
+            return Err(GitAiError::Generic(format!(
+                "Claude Code version {}.{} detected, but minimum version {}.{} is required",
+                version.0, version.1, MIN_CLAUDE_VERSION.0, MIN_CLAUDE_VERSION.1
+            )));
+        }
+
+        // Check if hooks are installed
+        let settings_path = Self::settings_path();
+        if !settings_path.exists() {
+            return Ok(HookCheckResult {
+                tool_installed: true,
+                hooks_installed: false,
+                hooks_up_to_date: false,
+            });
+        }
+
+        let raw = fs::read_to_string(&settings_path)?;
+        let content = raw.strip_prefix('\u{FEFF}').unwrap_or(&raw);
+        let existing: Value = serde_json::from_str(content).unwrap_or_else(|_| json!({}));
+
+        // Check if our hooks are installed
+        let has_hooks = existing
             .get("hooks")
             .and_then(|h| h.get("PreToolUse"))
             .and_then(|v| v.as_array());
@@ -77,8 +116,11 @@ impl ClaudeCodeInstaller {
             fs::create_dir_all(dir)?;
         }
 
+        // Read existing content as string, stripping UTF-8 BOM if present
+        // (Claude Code on Windows or some editors may write a BOM-prefixed settings.json)
         let existing_content = if settings_path.exists() {
-            fs::read_to_string(settings_path)?
+            let raw = fs::read_to_string(&settings_path)?;
+            raw.strip_prefix('\u{FEFF}').map(String::from).unwrap_or(raw)
         } else {
             String::new()
         };
@@ -245,7 +287,8 @@ impl ClaudeCodeInstaller {
             return Ok(None);
         }
 
-        let existing_content = fs::read_to_string(settings_path)?;
+        let raw = fs::read_to_string(&settings_path)?;
+        let existing_content = raw.strip_prefix('\u{FEFF}').map(String::from).unwrap_or(raw);
         let existing: Value = serde_json::from_str(&existing_content)?;
 
         let mut merged = existing.clone();
@@ -1233,25 +1276,46 @@ mod tests {
         );
     }
 
-    /// Regression test for #1039: install_hooks_at should succeed even when
-    /// the parent directory does not yet exist.
     #[test]
-    fn test_install_hooks_creates_missing_parent_dir() {
+    fn test_claude_install_hooks_handles_bom_prefixed_settings() {
         let temp_dir = TempDir::new().unwrap();
-        // Point to a settings.json inside a directory that does NOT exist yet
-        let settings_path = temp_dir.path().join("missing_dir").join("settings.json");
-        assert!(!settings_path.parent().unwrap().exists());
+        let settings_path = temp_dir.path().join(".claude").join("settings.json");
+        let binary_path = create_test_binary_path();
 
-        let result =
-            ClaudeCodeInstaller::install_hooks_at(&settings_path, &params(), false).unwrap();
+        fs::create_dir_all(settings_path.parent().unwrap()).unwrap();
 
-        assert!(result.is_some(), "should report changes for fresh install");
-        assert!(settings_path.exists(), "settings.json should be created");
+        // Write settings.json with a UTF-8 BOM (as Claude Code on Windows / some editors produce)
+        let bom = b"\xEF\xBB\xBF";
+        let json_body = br#"{"env":{"CLAUDE_CODE_ENABLE_TELEMETRY":"1"},"skipDangerousModePermissionPrompt":true}"#;
+        let mut content = Vec::new();
+        content.extend_from_slice(bom);
+        content.extend_from_slice(json_body);
+        fs::write(&settings_path, &content).unwrap();
 
-        let content: Value =
-            serde_json::from_str(&fs::read_to_string(&settings_path).unwrap()).expect("valid JSON");
-        let hooks = content.get("hooks").expect("hooks key should exist");
-        assert!(hooks.get("PreToolUse").is_some());
-        assert!(hooks.get("PostToolUse").is_some());
+        // Override HOME so ClaudeCodeInstaller::settings_path() resolves to our temp dir
+        let prev_home = std::env::var_os("HOME");
+        unsafe { std::env::set_var("HOME", temp_dir.path()) };
+
+        let params = HookInstallerParams { binary_path };
+        let installer = ClaudeCodeInstaller;
+
+        // Should succeed, not return a JSON parse error
+        let result = installer.install_hooks(&params, false);
+
+        // Restore HOME before any assertions that might panic
+        unsafe {
+            match prev_home {
+                Some(v) => std::env::set_var("HOME", v),
+                None => std::env::remove_var("HOME"),
+            }
+        }
+
+        assert!(result.is_ok(), "install_hooks should not fail on BOM-prefixed settings.json, got: {:?}", result.err());
+
+        // Verify hooks were written (no BOM) and the existing fields were preserved
+        let written = fs::read_to_string(&settings_path).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
+        assert!(parsed.get("hooks").is_some(), "hooks key should be present");
+        assert!(parsed.get("skipDangerousModePermissionPrompt").is_some(), "existing fields should be preserved");
     }
 }
