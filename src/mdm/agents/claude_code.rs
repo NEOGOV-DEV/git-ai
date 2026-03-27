@@ -64,8 +64,9 @@ impl HookInstaller for ClaudeCodeInstaller {
             });
         }
 
-        let content = fs::read_to_string(&settings_path)?;
-        let existing: Value = serde_json::from_str(&content).unwrap_or_else(|_| json!({}));
+        let raw = fs::read_to_string(&settings_path)?;
+        let content = raw.strip_prefix('\u{FEFF}').unwrap_or(&raw);
+        let existing: Value = serde_json::from_str(content).unwrap_or_else(|_| json!({}));
 
         // Check if our hooks are installed
         let has_hooks = existing
@@ -108,9 +109,11 @@ impl HookInstaller for ClaudeCodeInstaller {
             fs::create_dir_all(dir)?;
         }
 
-        // Read existing content as string
+        // Read existing content as string, stripping UTF-8 BOM if present
+        // (Claude Code on Windows or some editors may write a BOM-prefixed settings.json)
         let existing_content = if settings_path.exists() {
-            fs::read_to_string(&settings_path)?
+            let raw = fs::read_to_string(&settings_path)?;
+            raw.strip_prefix('\u{FEFF}').map(String::from).unwrap_or(raw)
         } else {
             String::new()
         };
@@ -282,7 +285,8 @@ impl HookInstaller for ClaudeCodeInstaller {
             return Ok(None);
         }
 
-        let existing_content = fs::read_to_string(&settings_path)?;
+        let raw = fs::read_to_string(&settings_path)?;
+        let existing_content = raw.strip_prefix('\u{FEFF}').map(String::from).unwrap_or(raw);
         let existing: Value = serde_json::from_str(&existing_content)?;
 
         let mut merged = existing.clone();
@@ -719,5 +723,48 @@ mod tests {
             pre_tool_cmd, "/usr/local/bin/git-ai checkpoint claude --hook-input stdin",
             "Unix paths should be preserved unchanged"
         );
+    }
+
+    #[test]
+    fn test_claude_install_hooks_handles_bom_prefixed_settings() {
+        let temp_dir = TempDir::new().unwrap();
+        let settings_path = temp_dir.path().join(".claude").join("settings.json");
+        let binary_path = create_test_binary_path();
+
+        fs::create_dir_all(settings_path.parent().unwrap()).unwrap();
+
+        // Write settings.json with a UTF-8 BOM (as Claude Code on Windows / some editors produce)
+        let bom = b"\xEF\xBB\xBF";
+        let json_body = br#"{"env":{"CLAUDE_CODE_ENABLE_TELEMETRY":"1"},"skipDangerousModePermissionPrompt":true}"#;
+        let mut content = Vec::new();
+        content.extend_from_slice(bom);
+        content.extend_from_slice(json_body);
+        fs::write(&settings_path, &content).unwrap();
+
+        // Override HOME so ClaudeCodeInstaller::settings_path() resolves to our temp dir
+        let prev_home = std::env::var_os("HOME");
+        unsafe { std::env::set_var("HOME", temp_dir.path()) };
+
+        let params = HookInstallerParams { binary_path };
+        let installer = ClaudeCodeInstaller;
+
+        // Should succeed, not return a JSON parse error
+        let result = installer.install_hooks(&params, false);
+
+        // Restore HOME before any assertions that might panic
+        unsafe {
+            match prev_home {
+                Some(v) => std::env::set_var("HOME", v),
+                None => std::env::remove_var("HOME"),
+            }
+        }
+
+        assert!(result.is_ok(), "install_hooks should not fail on BOM-prefixed settings.json, got: {:?}", result.err());
+
+        // Verify hooks were written (no BOM) and the existing fields were preserved
+        let written = fs::read_to_string(&settings_path).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
+        assert!(parsed.get("hooks").is_some(), "hooks key should be present");
+        assert!(parsed.get("skipDangerousModePermissionPrompt").is_some(), "existing fields should be preserved");
     }
 }
