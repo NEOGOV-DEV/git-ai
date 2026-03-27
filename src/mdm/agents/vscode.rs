@@ -306,6 +306,7 @@ mod tests {
         let installer = VSCodeInstaller;
         let params = HookInstallerParams {
             binary_path: std::path::PathBuf::from("/usr/local/bin/git-ai"),
+            ..Default::default()
         };
 
         let results = installer.uninstall_extras(&params, false).unwrap();
@@ -319,6 +320,7 @@ mod tests {
         let installer = VSCodeInstaller;
         let params = HookInstallerParams {
             binary_path: std::path::PathBuf::from("/usr/local/bin/git-ai"),
+            ..Default::default()
         };
 
         // install_hooks should return None because VSCode uses extension, not config hooks
@@ -331,6 +333,7 @@ mod tests {
         let installer = VSCodeInstaller;
         let params = HookInstallerParams {
             binary_path: std::path::PathBuf::from("/usr/local/bin/git-ai"),
+            ..Default::default()
         };
 
         let result = installer.uninstall_hooks(&params, false).unwrap();

@@ -19,6 +19,29 @@ impl ClaudeCodeInstaller {
     fn settings_path() -> PathBuf {
         home_dir().join(".claude").join("settings.json")
     }
+
+    fn managed_settings_path() -> PathBuf {
+        #[cfg(target_os = "macos")]
+        {
+            PathBuf::from("/Library/Application Support/ClaudeCode/managed-settings.json")
+        }
+        #[cfg(windows)]
+        {
+            PathBuf::from(r"C:\Program Files\ClaudeCode\managed-settings.json")
+        }
+        #[cfg(not(any(target_os = "macos", windows)))]
+        {
+            PathBuf::from("/etc/claude-code/managed-settings.json")
+        }
+    }
+
+    fn resolve_settings_path(params: &HookInstallerParams) -> PathBuf {
+        if params.managed {
+            Self::managed_settings_path()
+        } else {
+            Self::settings_path()
+        }
+    }
 }
 
 impl HookInstaller for ClaudeCodeInstaller {
@@ -102,7 +125,7 @@ impl HookInstaller for ClaudeCodeInstaller {
         params: &HookInstallerParams,
         dry_run: bool,
     ) -> Result<Option<String>, GitAiError> {
-        let settings_path = Self::settings_path();
+        let settings_path = Self::resolve_settings_path(params);
 
         // Ensure directory exists
         if let Some(dir) = settings_path.parent() {
@@ -113,7 +136,9 @@ impl HookInstaller for ClaudeCodeInstaller {
         // (Claude Code on Windows or some editors may write a BOM-prefixed settings.json)
         let existing_content = if settings_path.exists() {
             let raw = fs::read_to_string(&settings_path)?;
-            raw.strip_prefix('\u{FEFF}').map(String::from).unwrap_or(raw)
+            raw.strip_prefix('\u{FEFF}')
+                .map(String::from)
+                .unwrap_or(raw)
         } else {
             String::new()
         };
@@ -276,17 +301,20 @@ impl HookInstaller for ClaudeCodeInstaller {
 
     fn uninstall_hooks(
         &self,
-        _params: &HookInstallerParams,
+        params: &HookInstallerParams,
         dry_run: bool,
     ) -> Result<Option<String>, GitAiError> {
-        let settings_path = Self::settings_path();
+        let settings_path = Self::resolve_settings_path(params);
 
         if !settings_path.exists() {
             return Ok(None);
         }
 
         let raw = fs::read_to_string(&settings_path)?;
-        let existing_content = raw.strip_prefix('\u{FEFF}').map(String::from).unwrap_or(raw);
+        let existing_content = raw
+            .strip_prefix('\u{FEFF}')
+            .map(String::from)
+            .unwrap_or(raw);
         let existing: Value = serde_json::from_str(&existing_content)?;
 
         let mut merged = existing.clone();
@@ -741,30 +769,52 @@ mod tests {
         content.extend_from_slice(json_body);
         fs::write(&settings_path, &content).unwrap();
 
-        // Override HOME so ClaudeCodeInstaller::settings_path() resolves to our temp dir
+        // Override home env vars so ClaudeCodeInstaller::settings_path() resolves to our temp dir.
+        // On Windows, home_dir() checks USERPROFILE before HOME, so both must be set.
         let prev_home = std::env::var_os("HOME");
-        unsafe { std::env::set_var("HOME", temp_dir.path()) };
+        #[cfg(windows)]
+        let prev_userprofile = std::env::var_os("USERPROFILE");
+        unsafe {
+            std::env::set_var("HOME", temp_dir.path());
+            #[cfg(windows)]
+            std::env::set_var("USERPROFILE", temp_dir.path());
+        }
 
-        let params = HookInstallerParams { binary_path };
+        let params = HookInstallerParams {
+            binary_path,
+            managed: false,
+        };
         let installer = ClaudeCodeInstaller;
 
         // Should succeed, not return a JSON parse error
         let result = installer.install_hooks(&params, false);
 
-        // Restore HOME before any assertions that might panic
+        // Restore home env vars before any assertions that might panic
         unsafe {
             match prev_home {
                 Some(v) => std::env::set_var("HOME", v),
                 None => std::env::remove_var("HOME"),
             }
+            #[cfg(windows)]
+            match prev_userprofile {
+                Some(v) => std::env::set_var("USERPROFILE", v),
+                None => std::env::remove_var("USERPROFILE"),
+            }
         }
 
-        assert!(result.is_ok(), "install_hooks should not fail on BOM-prefixed settings.json, got: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "install_hooks should not fail on BOM-prefixed settings.json, got: {:?}",
+            result.err()
+        );
 
         // Verify hooks were written (no BOM) and the existing fields were preserved
         let written = fs::read_to_string(&settings_path).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
         assert!(parsed.get("hooks").is_some(), "hooks key should be present");
-        assert!(parsed.get("skipDangerousModePermissionPrompt").is_some(), "existing fields should be preserved");
+        assert!(
+            parsed.get("skipDangerousModePermissionPrompt").is_some(),
+            "existing fields should be preserved"
+        );
     }
 }

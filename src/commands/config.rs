@@ -318,7 +318,7 @@ fn show_all_config() -> Result<(), String> {
         serde_json::to_value(runtime_config.git_ai_hooks())
             .unwrap_or_else(|_| Value::Object(serde_json::Map::new())),
     );
-    
+
     if let Some(endpoint) = runtime_config.otel_endpoint() {
         effective_config.insert(
             "otel_endpoint".to_string(),

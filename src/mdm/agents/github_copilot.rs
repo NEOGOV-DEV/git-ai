@@ -419,6 +419,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer.install_hooks(&params, false).unwrap();
@@ -457,6 +458,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let first = installer.install_hooks(&params, false).unwrap();
@@ -474,6 +476,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let hooks_dir = home.join(".github").join("hooks");
@@ -499,6 +502,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer.install_hooks(&params, false).unwrap();
@@ -535,6 +539,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer.install_hooks(&params, false).unwrap();
@@ -574,6 +579,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let result = installer.check_hooks(&params).unwrap();
@@ -608,6 +614,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let result = installer.check_hooks(&params).unwrap();
@@ -652,6 +659,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
             let diff = installer.uninstall_hooks(&params, false).unwrap();
             assert!(diff.is_some());
