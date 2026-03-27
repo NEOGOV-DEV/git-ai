@@ -104,7 +104,7 @@ function Verify-Checksum {
 # When set to __REPO_PLACEHOLDER__, defaults to "git-ai-project/git-ai"
 $Repo = '__REPO_PLACEHOLDER__'
 if ($Repo -eq '__REPO_PLACEHOLDER__') {
-    $Repo = 'NEOGOV-DEV/git-ai'
+    $Repo = 'ngv-dev/git-ai'
 }
 
 # Version placeholder - replaced during release builds with actual version (e.g., "v1.0.24")
@@ -119,7 +119,8 @@ $EmbeddedChecksums = '__CHECKSUMS_PLACEHOLDER__'
 # Ensure TLS 1.2 for GitHub downloads on older PowerShell versions
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-} catch { }
+}
+catch { }
 
 function Get-Architecture {
     try {
@@ -129,7 +130,8 @@ function Get-Architecture {
             'Arm64' { return 'arm64' }
             default { return $null }
         }
-    } catch {
+    }
+    catch {
         $pa = $env:PROCESSOR_ARCHITECTURE
         if ($pa -match 'ARM64') { return 'arm64' }
         elseif ($pa -match '64') { return 'x64' }
@@ -178,7 +180,8 @@ function Get-StdGitPath {
                     $gitPath = $cfg.git_path
                 }
             }
-        } catch { }
+        }
+        catch { }
     }
 
     # 4. Final Validation
@@ -189,7 +192,8 @@ function Get-StdGitPath {
     try {
         & $gitPath --version | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'bad' }
-    } catch {
+    }
+    catch {
         Write-ErrorAndExit "Detected git at $gitPath is not usable."
     }
 
@@ -245,10 +249,12 @@ function Set-PathPrependBeforeGit {
         if ($newUserPath -ne $userPath) {
             [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User')
             $userStatus = 'Updated'
-        } else {
+        }
+        else {
             $userStatus = 'AlreadyPresent'
         }
-    } catch {
+    }
+    catch {
         $userStatus = 'Error'
     }
 
@@ -260,11 +266,13 @@ function Set-PathPrependBeforeGit {
         if ($newMachinePath -ne $machinePath) {
             [Environment]::SetEnvironmentVariable('Path', $newMachinePath, 'Machine')
             $machineStatus = 'Updated'
-        } else {
+        }
+        else {
             # Nothing changed at Machine scope; still treat as Machine for reporting
             $machineStatus = 'AlreadyPresent'
         }
-    } catch {
+    }
+    catch {
         # Access denied or not elevated; do NOT modify User PATH. Print big red error with instructions.
         $origGit = $null
         try { $origGit = Get-StdGitPath } catch { }
@@ -288,7 +296,8 @@ function Set-PathPrependBeforeGit {
         $procPath = $env:PATH
         $newProcPath = BuildPathWithInsert -existingPath $procPath -toInsert $PathToAdd
         if ($newProcPath -ne $procPath) { $env:PATH = $newProcPath }
-    } catch { }
+    }
+    catch { }
 
     return [PSCustomObject]@{
         UserStatus    = $userStatus
@@ -311,17 +320,20 @@ $binaryName = "git-ai-$os-$arch"
 # Priority: 1. Local binary override, 2. Pinned version (for release builds), 3. Environment variable, 4. "latest"
 if (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_LOCAL_BINARY)) {
     $releaseTag = 'local'
-} elseif ($PinnedVersion -ne '__VERSION_PLACEHOLDER__') {
+}
+elseif ($PinnedVersion -ne '__VERSION_PLACEHOLDER__') {
     # Version-pinned install script from a release
     $releaseTag = $PinnedVersion
     $downloadUrlExe = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName.exe"
     $downloadUrlNoExt = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName"
-} elseif (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_RELEASE_TAG) -and $env:GIT_AI_RELEASE_TAG -ne 'latest') {
+}
+elseif (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_RELEASE_TAG) -and $env:GIT_AI_RELEASE_TAG -ne 'latest') {
     # Environment variable override
     $releaseTag = $env:GIT_AI_RELEASE_TAG
     $downloadUrlExe = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName.exe"
     $downloadUrlNoExt = "https://github.com/$Repo/releases/download/$releaseTag/$binaryName"
-} else {
+}
+else {
     # Default to latest
     $releaseTag = 'latest'
     $downloadUrlExe = "https://github.com/$Repo/releases/latest/download/$binaryName.exe"
@@ -343,7 +355,8 @@ function Try-Download {
         Write-Host "Downloading from: $Url"
         Invoke-WebRequest -Uri $Url -OutFile $tmpFile -UseBasicParsing -ErrorAction Stop
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -357,9 +370,11 @@ if (-not [string]::IsNullOrWhiteSpace($env:GIT_AI_LOCAL_BINARY)) {
     }
     Copy-Item -Force -Path $env:GIT_AI_LOCAL_BINARY -Destination $tmpFile
     $downloadedBinaryName = "$binaryName.exe"
-} elseif (Try-Download -Url $downloadUrlExe) {
+}
+elseif (Try-Download -Url $downloadUrlExe) {
     $downloadedBinaryName = "$binaryName.exe"
-} elseif (Try-Download -Url $downloadUrlNoExt) {
+}
+elseif (Try-Download -Url $downloadUrlNoExt) {
     $downloadedBinaryName = $binaryName
 }
 
@@ -373,7 +388,8 @@ try {
         Remove-Item -Force -ErrorAction SilentlyContinue $tmpFile
         Write-ErrorAndExit 'Downloaded file is empty'
     }
-} catch {
+}
+catch {
     Remove-Item -Force -ErrorAction SilentlyContinue $tmpFile
     Write-ErrorAndExit 'Download failed'
 }
@@ -421,7 +437,8 @@ if ($env:INSTALL_NONCE -and $env:API_BASE) {
         if ($LASTEXITCODE -ne 0) {
             $needLogin = $true
         }
-    } catch {
+    }
+    catch {
         $needLogin = $true
     }
 }
@@ -429,7 +446,7 @@ if ($env:INSTALL_NONCE -and $env:API_BASE) {
 # Install hooks
 Write-Host 'Setting up IDE/agent hooks...'
 try {
-    & $finalExe install-hooks | Out-Host
+    & $finalExe install-hooks --managed | Out-Host
     Write-Success 'Successfully set up IDE/agent hooks'
 } catch {
     Write-Warning "Warning: Failed to set up IDE/agent hooks. Please try running 'git-ai install-hooks' manually."
