@@ -2,10 +2,12 @@ use crate::error::GitAiError;
 use std::path::PathBuf;
 
 /// Parameters passed to hook installers
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct HookInstallerParams {
     /// Path to the git-ai binary
     pub binary_path: PathBuf,
+    /// Install into system-managed settings instead of user settings
+    pub managed: bool,
 }
 
 /// Result of checking hook status

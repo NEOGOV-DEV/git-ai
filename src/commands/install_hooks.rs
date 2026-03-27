@@ -297,7 +297,7 @@ pub fn run(args: &[String]) -> Result<HashMap<String, String>, GitAiError> {
     // Parse flags
     let mut dry_run = false;
     let mut verbose = false;
-    let mut install_skills = false;
+    let mut managed = false;
     for arg in args {
         if arg == "--dry-run" || arg == "--dry-run=true" {
             dry_run = true;
@@ -305,8 +305,8 @@ pub fn run(args: &[String]) -> Result<HashMap<String, String>, GitAiError> {
         if arg == "--verbose" || arg == "-v" {
             verbose = true;
         }
-        if arg == "--skills" {
-            install_skills = true;
+        if arg == "--managed" {
+            managed = true;
         }
     }
 
@@ -325,8 +325,11 @@ pub fn run(args: &[String]) -> Result<HashMap<String, String>, GitAiError> {
 
     // Get absolute path to the current binary
     let binary_path = get_current_binary_path()?;
-    persist_install_config(&binary_path, dry_run)?;
-    let params = HookInstallerParams { binary_path };
+    persist_install_api_base_config(&binary_path, dry_run)?;
+    let params = HookInstallerParams {
+        binary_path,
+        managed,
+    };
 
     // Run async operations with smol and convert result
     let statuses = smol::block_on(async_run_install(&params, dry_run, verbose, install_skills))?;
@@ -424,6 +427,7 @@ pub fn run_uninstall(args: &[String]) -> Result<HashMap<String, String>, GitAiEr
     // Parse flags
     let mut dry_run = false;
     let mut verbose = false;
+    let mut managed = false;
     for arg in args {
         if arg == "--dry-run" || arg == "--dry-run=true" {
             dry_run = true;
@@ -431,11 +435,17 @@ pub fn run_uninstall(args: &[String]) -> Result<HashMap<String, String>, GitAiEr
         if arg == "--verbose" || arg == "-v" {
             verbose = true;
         }
+        if arg == "--managed" {
+            managed = true;
+        }
     }
 
     // Get absolute path to the current binary
     let binary_path = get_current_binary_path()?;
-    let params = HookInstallerParams { binary_path };
+    let params = HookInstallerParams {
+        binary_path,
+        managed,
+    };
 
     // Run async operations with smol and convert result
     let statuses = smol::block_on(async_run_uninstall(&params, dry_run, verbose))?;

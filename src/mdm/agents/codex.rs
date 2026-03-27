@@ -1247,6 +1247,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer
@@ -1433,6 +1434,7 @@ notify = ["notify-send", "Codex finished"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer
@@ -1460,6 +1462,7 @@ notify = ["notify-send", "Codex finished"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let first = installer
@@ -1533,6 +1536,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -1598,6 +1602,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -1676,6 +1681,7 @@ command = "/usr/local/bin/git-ai checkpoint codex --hook-input stdin"
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer
