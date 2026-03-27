@@ -1,0 +1,33 @@
+src/mdm/hook_installer.rs
+  4bf8dd7b0e2d4f66 5,9-10
+src/mdm/agents/claude_code.rs
+  4bf8dd7b0e2d4f66 22-44,128,304,307,772-773,775-781,783-786,792,798-801
+src/mdm/agents/vscode.rs
+  4bf8dd7b0e2d4f66 309,323,336
+src/mdm/agents/codex.rs
+  4bf8dd7b0e2d4f66 414,466,495,534,580,626
+src/mdm/agents/github_copilot.rs
+  4bf8dd7b0e2d4f66 422,461,479,505,542,582,617,662
+src/commands/install_hooks.rs
+  4bf8dd7b0e2d4f66 117,125-127,133-136,219,227-229,234-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.20",
+  "base_commit_sha": "bd97bf5d4bdb5f3e49f6877e20b48789fec51a01",
+  "prompts": {
+    "4bf8dd7b0e2d4f66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9aceaaae-4400-4a44-8c4b-cbee96e0640e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "messages": [],
+      "total_additions": 81,
+      "total_deletions": 10,
+      "accepted_lines": 81,
+      "overriden_lines": 0
+    }
+  }
+}
