@@ -72,7 +72,7 @@ fe2c4c8 (claude [session_id] 2025-12-02 19:25:13 -0500  142)             let fro
 **Mac, Linux, Windows (WSL)**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ngv-dev/git-ai/refs/heads/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/NEOGOV-DEV/git-ai/refs/heads/main/install.sh | bash
 ```
 
 **Windows (non-WSL)**
@@ -80,7 +80,7 @@ curl -sSL https://raw.githubusercontent.com/ngv-dev/git-ai/refs/heads/main/insta
 Non-WSL Windows support is currently experimental and under active development. We would love to hear your feedback while we work to get non-WSL Windows support production-ready.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/ngv-dev/git-ai/refs/heads/main/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/NEOGOV-DEV/git-ai/refs/heads/main/install.ps1 | iex"
 ```
 
 That's it — **no per-repo setup required.** Prompt and commit as normal. Git AI tracks attribution automatically.
