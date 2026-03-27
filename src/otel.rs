@@ -121,9 +121,10 @@ impl MetricLabels {
 /// - `"email"`         → `"email"` (returned as-is)
 fn extract_email(author: &str) -> &str {
     if let Some(start) = author.find('<')
-        && let Some(end) = author[start..].find('>') {
-            return &author[start + 1..start + end];
-        }
+        && let Some(end) = author[start..].find('>')
+    {
+        return &author[start + 1..start + end];
+    }
     author
 }
 
