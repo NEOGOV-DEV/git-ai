@@ -1,10 +1,6 @@
 name: E2E Tests
 
 on:
-  schedule:
-    - cron: '0 2 * * *'  # 2 AM UTC nightly
-  pull_request:
-    types: [labeled]
   workflow_dispatch:
 
 env:
