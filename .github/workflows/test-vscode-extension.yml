@@ -4,13 +4,7 @@ permissions:
   contents: read
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'agent-support/vscode/**'
-  pull_request:
-    paths:
-      - 'agent-support/vscode/**'
+  workflow_dispatch:
 
 jobs:
   test:

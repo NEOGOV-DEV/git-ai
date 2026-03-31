@@ -7,13 +7,7 @@
 
 name: IntelliJ Plugin Build
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'agent-support/intellij/**'
-  pull_request:
-    paths:
-      - 'agent-support/intellij/**'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
