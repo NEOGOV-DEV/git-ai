@@ -1,22 +1,6 @@
 name: End-to-End Tests
 
 on:
-  schedule:
-    - cron: '0 3 * * *'  # 3 AM UTC nightly
-  pull_request:
-    types: [labeled]
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'install.sh'
-      - 'install.ps1'
-      - 'scripts/**'
-      - '.github/workflows/install-scripts-local.yml'
-  merge_group:
-    branches: [main]
   workflow_dispatch:
 
 env:

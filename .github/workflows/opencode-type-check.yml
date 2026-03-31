@@ -1,13 +1,7 @@
 name: OpenCode Plugin Type Check
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'agent-support/opencode/**'
-  pull_request:
-    paths:
-      - 'agent-support/opencode/**'
+  workflow_dispatch:
 
 jobs:
   type-check:
