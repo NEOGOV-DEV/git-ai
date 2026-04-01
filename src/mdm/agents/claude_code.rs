@@ -158,8 +158,8 @@ impl HookInstaller for ClaudeCodeInstaller {
         // On Windows, Claude Code runs hooks in git bash shell, so we need
         // paths in MSYS/MinGW format (e.g. /c/Users/... instead of C:\Users\...)
         let binary_path_str = to_git_bash_path(&params.binary_path);
-        let pre_tool_cmd = format!("{} {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
-        let post_tool_cmd = format!("{} {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
+        let pre_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
+        let post_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
 
         let desired_hooks = json!({
             "PreToolUse": {
@@ -707,8 +707,8 @@ mod tests {
         let binary_path = clean_path(raw_path);
 
         let binary_path_str = to_git_bash_path(&binary_path);
-        let pre_tool_cmd = format!("{} {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
-        let post_tool_cmd = format!("{} {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
+        let pre_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
+        let post_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
 
         assert!(
             !pre_tool_cmd.contains(r"\\?\"),
@@ -730,17 +730,17 @@ mod tests {
     fn test_claude_hook_commands_use_git_bash_path_on_windows() {
         let binary_path = PathBuf::from(r"C:\Users\Administrator\.git-ai\bin\git-ai.exe");
         let binary_path_str = to_git_bash_path(&binary_path);
-        let pre_tool_cmd = format!("{} {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
-        let post_tool_cmd = format!("{} {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
+        let pre_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
+        let post_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
 
         assert_eq!(
             pre_tool_cmd,
-            "/c/Users/Administrator/.git-ai/bin/git-ai.exe checkpoint claude --hook-input stdin",
+            "\"/c/Users/Administrator/.git-ai/bin/git-ai.exe\" checkpoint claude --hook-input stdin",
             "PreToolUse command should use git bash path format"
         );
         assert_eq!(
             post_tool_cmd,
-            "/c/Users/Administrator/.git-ai/bin/git-ai.exe checkpoint claude --hook-input stdin",
+            "\"/c/Users/Administrator/.git-ai/bin/git-ai.exe\" checkpoint claude --hook-input stdin",
             "PostToolUse command should use git bash path format"
         );
     }
@@ -749,10 +749,10 @@ mod tests {
     fn test_claude_hook_commands_preserve_unix_path() {
         let binary_path = PathBuf::from("/usr/local/bin/git-ai");
         let binary_path_str = to_git_bash_path(&binary_path);
-        let pre_tool_cmd = format!("{} {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
+        let pre_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
 
         assert_eq!(
-            pre_tool_cmd, "/usr/local/bin/git-ai checkpoint claude --hook-input stdin",
+            pre_tool_cmd, "\"/usr/local/bin/git-ai\" checkpoint claude --hook-input stdin",
             "Unix paths should be preserved unchanged"
         );
     }
