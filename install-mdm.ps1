@@ -444,8 +444,10 @@ if ($env:INSTALL_NONCE -and $env:API_BASE) {
 }
 
 # Install hooks
-Write-Host 'Setting up IDE/agent hooks...'
 try {
+    Write-Host 'Uninstalling old IDE/agent hooks...'
+    & $finalExe uninstall-hooks --managed | Out-Host
+    Write-Host 'Installing IDE/agent hooks...'
     & $finalExe install-hooks --managed | Out-Host
     Write-Success 'Successfully set up IDE/agent hooks'
 } catch {
