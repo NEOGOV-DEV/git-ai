@@ -1,0 +1,37 @@
+name: Jira AI Attribution
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  update-jira:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch the full history so git notes are accessible.
+          # git-ai stores notes under refs/notes/ai; fetch that ref explicitly.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch git-ai notes ref
+        run: git fetch origin refs/notes/ai:refs/notes/ai || true
+
+      - name: Install git-ai
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/NEOGOV-DEV/git-ai/refs/heads/main/install.sh | bash
+          echo "$HOME/.git-ai/bin" >> $GITHUB_PATH
+
+      - name: Update Jira AI attribution field
+        env:
+          PR_TITLE:                ${{ github.event.pull_request.title }}
+          PR_BASE_SHA:             ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA:             ${{ github.event.pull_request.merge_commit_sha }}
+          JIRA_BASE_URL:           ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER:               ${{ secrets.JIRA_USER }}
+          JIRA_TOKEN:              ${{ secrets.JIRA_TOKEN }}
+        run: python3 .github/scripts/jira_ai_pct.py
