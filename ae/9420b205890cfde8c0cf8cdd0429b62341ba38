@@ -1,0 +1,42 @@
+.github/scripts/jira_ai_pct.py
+  h_aa0d2240983926 1-137,142,148-180
+  s_9b6c04a26b34df::t_ba08985daa09bd 138-141,143-147
+.github/scripts/test_jira_ai_pct.py
+  s_9b6c04a26b34df::t_5b27562d11c2ca 1-73,84,86-94,97-185,189,191-199,201-209,211-218,220-268
+  s_9b6c04a26b34df::t_385ef5bf9b9ef9 74-83,85,95-96
+  s_9b6c04a26b34df::t_ce3de3b6154beb 186-188,190,200,210,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "ae9420b205890cfde8c0cf8cdd0429b62341ba38",
+  "prompts": {
+    "868cbf31d7c1e507": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00be5f8d-ed8a-410c-a845-356a96ea2c4c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>",
+      "total_additions": 261,
+      "total_deletions": 55,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_aa0d2240983926": {
+      "author": "Sergey Kats <skats@neogov.net>"
+    }
+  },
+  "sessions": {
+    "s_9b6c04a26b34df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8069f02-8893-4a2d-baa0-ce2b353b87dc",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>"
+    }
+  }
+}
