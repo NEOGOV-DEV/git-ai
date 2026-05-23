@@ -4,6 +4,7 @@ use crate::ci::github::{
     run_github_push_metrics,
 };
 use crate::ci::gitlab::{get_gitlab_ci_context, print_gitlab_ci_yaml};
+use crate::ci::jira::{JiraOptions, compute_attribution, extract_jira_id, send_to_jira};
 use crate::git::repository::find_repository_in_path;
 use crate::utils::debug_log;
 
@@ -45,6 +46,9 @@ pub fn handle_ci(args: &[String]) {
         }
         "local" => {
             handle_ci_local(&args[1..]);
+        }
+        "jira" => {
+            handle_ci_jira(&args[1..]);
         }
         _ => {
             eprintln!("Unknown ci subcommand: {}", args[0]);
@@ -312,6 +316,122 @@ fn handle_ci_local(args: &[String]) {
     }
 }
 
+fn handle_ci_jira(args: &[String]) {
+    // Simple flag parser
+    let flag = |name: &str| -> Option<String> {
+        let mut i = 0;
+        while i < args.len() {
+            if args[i] == name {
+                if i + 1 < args.len() {
+                    return Some(args[i + 1].clone());
+                } else {
+                    eprintln!("Missing value for flag {}", name);
+                    std::process::exit(1);
+                }
+            }
+            i += 1;
+        }
+        None
+    };
+
+    let require_flag = |name: &str| -> String {
+        flag(name).unwrap_or_else(|| {
+            eprintln!("{} is required", name);
+            print_ci_jira_help_and_exit();
+        })
+    };
+
+    let pr_title = require_flag("--pr-title");
+    let base_sha = require_flag("--base-sha");
+    let head_sha = require_flag("--head-sha");
+    let jira_base_url = require_flag("--jira-base-url");
+    let field_ai_pct = require_flag("--field-ai-pct");
+    let field_lines_added = require_flag("--field-lines-added");
+    let field_lines_deleted = require_flag("--field-lines-deleted");
+
+    let jira_user = std::env::var("JIRA_USER").unwrap_or_else(|_| {
+        eprintln!("JIRA_USER environment variable is required");
+        std::process::exit(1);
+    });
+    let jira_token = std::env::var("JIRA_TOKEN").unwrap_or_else(|_| {
+        eprintln!("JIRA_TOKEN environment variable is required");
+        std::process::exit(1);
+    });
+
+    let jira_key = match extract_jira_id(&pr_title) {
+        Some(key) => key,
+        None => {
+            println!("No Jira issue key found in PR title: '{}'. Skipping.", pr_title);
+            std::process::exit(0);
+        }
+    };
+    println!("Jira issue: {}", jira_key);
+
+    let repo = match find_repository_in_path(".") {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Failed to open repository: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    println!("Computing AI attribution for {}..{}", base_sha, head_sha);
+    let attribution = match compute_attribution(&repo, &base_sha, &head_sha) {
+        Ok(Some(a)) => a,
+        Ok(None) => {
+            println!("No lines added in this PR range. Skipping.");
+            std::process::exit(0);
+        }
+        Err(e) => {
+            eprintln!("Failed to compute attribution: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    println!(
+        "PR stats: AI={:.1}%, lines added={}, lines deleted={}",
+        attribution.ai_pct, attribution.lines_added, attribution.lines_deleted
+    );
+
+    let opts = JiraOptions {
+        base_url: jira_base_url,
+        field_ai_pct,
+        field_lines_added,
+        field_lines_deleted,
+    };
+
+    match send_to_jira(&opts, &jira_key, &attribution, &jira_user, &jira_token) {
+        Ok(()) => {
+            println!("Updated Jira issue {} successfully.", jira_key);
+            std::process::exit(0);
+        }
+        Err(e) => {
+            eprintln!("Failed to update Jira: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn print_ci_jira_help_and_exit() -> ! {
+    eprintln!("git-ai ci jira - Send AI attribution stats to a Jira issue on PR closure");
+    eprintln!();
+    eprintln!("Usage: git-ai ci jira [flags]");
+    eprintln!();
+    eprintln!("Required flags:");
+    eprintln!("  --pr-title <title>          PR title (Jira ID extracted from here)");
+    eprintln!("  --base-sha <sha>            Merge base commit SHA");
+    eprintln!("  --head-sha <sha>            PR head / merge commit SHA");
+    eprintln!("  --jira-base-url <url>       Jira instance base URL");
+    eprintln!("  --field-ai-pct <id>         Custom field ID for AI percentage");
+    eprintln!("  --field-lines-added <id>    Custom field ID for total lines added");
+    eprintln!("  --field-lines-deleted <id>  Custom field ID for total lines deleted");
+    eprintln!();
+    eprintln!("Required environment variables:");
+    eprintln!("  JIRA_USER    Jira user email");
+    eprintln!("  JIRA_TOKEN   Jira API token");
+    std::process::exit(1);
+}
+
 fn print_ci_help_and_exit() -> ! {
     eprintln!("git-ai ci - Continuous integration utilities");
     eprintln!();
@@ -333,6 +453,11 @@ fn print_ci_help_and_exit() -> ! {
     eprintln!(
         "                            [--skip-fetch-notes] [--skip-fetch-base] [--skip-fetch]"
     );
+    eprintln!("  jira             Send AI attribution stats to Jira on PR closure");
+    eprintln!("                   Usage: git-ai ci jira --pr-title <title> --base-sha <sha> --head-sha <sha>");
+    eprintln!("                          --jira-base-url <url> --field-ai-pct <id>");
+    eprintln!("                          --field-lines-added <id> --field-lines-deleted <id>");
+    eprintln!("                   Env:   JIRA_USER, JIRA_TOKEN");
     std::process::exit(1);
 }
 
