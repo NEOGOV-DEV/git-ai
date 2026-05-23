@@ -1,0 +1,25 @@
+src/ci/mod.rs
+  s_f7b9e10865d05a::t_fbeaa608429f54 4
+src/ci/jira.rs
+  s_f7b9e10865d05a::t_eecae47371a073 1-249
+src/commands/ci_handlers.rs
+  s_f7b9e10865d05a::t_8f797113c5cf7c 319-434,456-460
+  s_f7b9e10865d05a::t_a3d6cc2c3bb8d1 50-52
+  s_f7b9e10865d05a::t_1dae207b5630cd 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "cd2acfd6ff22d0104d2b58b321c0958d905ff205",
+  "prompts": {},
+  "sessions": {
+    "s_f7b9e10865d05a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f912b5d0-2697-40d8-bcb7-73591b12f0e9",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>"
+    }
+  }
+}
