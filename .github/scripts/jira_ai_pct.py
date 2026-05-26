@@ -40,6 +40,29 @@ def git_ai_stats(commit_range: str) -> dict:
         return {}
 
 
+def get_commits_in_range(base_sha: str, head_sha: str) -> list[str]:
+    result = subprocess.run(
+        ["git", "log", "--format=%H", f"{base_sha}..{head_sha}"],
+        capture_output=True, text=True,
+    )
+    return result.stdout.strip().split("\n") if result.stdout.strip() else []
+
+
+def aggregate_stats(base_sha: str, head_sha: str) -> tuple[int, int, int]:
+    """Return (ai_additions, diff_added, diff_deleted) summed across all commits."""
+    commits = get_commits_in_range(base_sha, head_sha)
+    print(f"Found {len(commits)} commit(s) in range")
+    total_ai, total_adds, total_dels = 0, 0, 0
+    for sha in commits:
+        print(f"  git-ai stats {sha}^..{sha}")
+        d = git_ai_stats(f"{sha}^..{sha}")
+        rs = d.get("range_stats", {})
+        total_ai   += rs.get("ai_additions", 0)
+        total_adds += rs.get("git_diff_added_lines", 0)
+        total_dels += rs.get("git_diff_deleted_lines", 0)
+    return total_ai, total_adds, total_dels
+
+
 # ── Jira helpers ──────────────────────────────────────────────────────────────
 
 def _ssl_context() -> ssl.SSLContext:
@@ -131,14 +154,8 @@ def main() -> None:
         sys.exit(0)
     print(f"Jira issue: {jira_key}")
 
-    commit_range = f"{base_sha}..{head_sha}"
-    print(f"Running git-ai stats {commit_range}")
-    d = git_ai_stats(commit_range)
-    
-    rs         = d.get("range_stats", {})
-    total_ai   = rs.get("ai_additions", 0)
-    diff_adds  = rs.get("git_diff_added_lines", 0)
-    diff_dels  = rs.get("git_diff_deleted_lines", 0)
+    print(f"Aggregating git-ai stats for {base_sha}..{head_sha}")
+    total_ai, diff_adds, diff_dels = aggregate_stats(base_sha, head_sha)
 
     if diff_adds == 0:
         print("No git-ai attribution found for this PR. Skipping.")

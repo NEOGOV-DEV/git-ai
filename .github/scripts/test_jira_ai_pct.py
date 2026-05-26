@@ -155,6 +155,68 @@ class TestJiraSetFields(unittest.TestCase):
                 m.jira_set_fields("https://x", "ABC-1", {"26954": 80.0}, "u", "t")
 
 
+class TestGetCommitsInRange(unittest.TestCase):
+    def _run(self, stdout):
+        proc = MagicMock()
+        proc.stdout = stdout
+        with patch("subprocess.run", return_value=proc) as sp:
+            result = m.get_commits_in_range("base", "head")
+            sp.assert_called_once_with(
+                ["git", "log", "--format=%H", "base..head"],
+                capture_output=True, text=True,
+            )
+        return result
+
+    def test_multiple_commits(self):
+        self.assertEqual(self._run("abc\ndef\nghi"), ["abc", "def", "ghi"])
+
+    def test_single_commit(self):
+        self.assertEqual(self._run("abc"), ["abc"])
+
+    def test_empty_range(self):
+        self.assertEqual(self._run(""), [])
+
+
+class TestAggregateStats(unittest.TestCase):
+    def _make_stats(self, ai, added, deleted):
+        return {"range_stats": {"ai_additions": ai,
+                                "git_diff_added_lines": added,
+                                "git_diff_deleted_lines": deleted}}
+
+    def test_sums_across_commits(self):
+        commits = ["sha1", "sha2", "sha3"]
+        stats_seq = [
+            self._make_stats(10, 20, 5),
+            self._make_stats(30, 50, 0),
+            self._make_stats(5,  15, 3),
+        ]
+        with patch.object(m, "get_commits_in_range", return_value=commits), \
+             patch.object(m, "git_ai_stats", side_effect=stats_seq):
+            ai, adds, dels = m.aggregate_stats("base", "head")
+        self.assertEqual(ai,   45)
+        self.assertEqual(adds, 85)
+        self.assertEqual(dels,  8)
+
+    def test_each_commit_called_with_parent_range(self):
+        commits = ["aaa", "bbb"]
+        with patch.object(m, "get_commits_in_range", return_value=commits), \
+             patch.object(m, "git_ai_stats", return_value={}) as mock_stats:
+            m.aggregate_stats("base", "head")
+        calls = [c.args[0] for c in mock_stats.call_args_list]
+        self.assertEqual(calls, ["aaa^..aaa", "bbb^..bbb"])
+
+    def test_empty_range_returns_zeros(self):
+        with patch.object(m, "get_commits_in_range", return_value=[]):
+            ai, adds, dels = m.aggregate_stats("base", "head")
+        self.assertEqual((ai, adds, dels), (0, 0, 0))
+
+    def test_missing_range_stats_treated_as_zero(self):
+        with patch.object(m, "get_commits_in_range", return_value=["sha1"]), \
+             patch.object(m, "git_ai_stats", return_value={}):
+            ai, adds, dels = m.aggregate_stats("base", "head")
+        self.assertEqual((ai, adds, dels), (0, 0, 0))
+
+
 class TestMain(unittest.TestCase):
     BASE_ENV = {
         "PR_TITLE":      "ABC-42: implement feature",
@@ -165,31 +227,27 @@ class TestMain(unittest.TestCase):
         "JIRA_TOKEN":    "tok",
     }
 
-    def _run_main(self, env, stats, existing_fields):
-        """Run main() with mocked subprocess and HTTP calls."""
+    def _run_main(self, env, agg_result, existing_fields):
+        """Run main() with mocked aggregate_stats and HTTP calls."""
         with patch.dict("os.environ", env, clear=True), \
-             patch.object(m, "git_ai_stats", return_value=stats) as mock_stats, \
+             patch.object(m, "aggregate_stats", return_value=agg_result) as mock_agg, \
              patch.object(m, "jira_get_fields", return_value=existing_fields) as mock_get, \
              patch.object(m, "jira_set_fields") as mock_set:
             m.main()
-        return mock_stats, mock_get, mock_set
+        return mock_agg, mock_get, mock_set
 
     def test_no_jira_key_skips(self):
         env = {**self.BASE_ENV, "PR_TITLE": "chore: no key here"}
         with patch.dict("os.environ", env, clear=True), \
-             patch.object(m, "git_ai_stats") as mock_stats:
+             patch.object(m, "aggregate_stats") as mock_agg:
             with self.assertRaises(SystemExit) as ctx:
                 m.main()
             self.assertEqual(ctx.exception.code, 0)
-            mock_stats.assert_not_called()
-
-    def _make_stats(self, ai, added, deleted):
-        return {"range_stats": {"ai_additions": ai, "git_diff_added_lines": added, "git_diff_deleted_lines": deleted}}
+            mock_agg.assert_not_called()
 
     def test_no_diff_lines_skips(self):
-        stats = self._make_stats(0, 0, 0)
         with patch.dict("os.environ", self.BASE_ENV, clear=True), \
-             patch.object(m, "git_ai_stats", return_value=stats), \
+             patch.object(m, "aggregate_stats", return_value=(0, 0, 0)), \
              patch.object(m, "jira_set_fields") as mock_set:
             with self.assertRaises(SystemExit) as ctx:
                 m.main()
@@ -197,9 +255,8 @@ class TestMain(unittest.TestCase):
             mock_set.assert_not_called()
 
     def test_first_time_sets_value(self):
-        stats = self._make_stats(80, 100, 20)
         existing = {"26954": None, "26955": None, "26956": None}
-        _, _, mock_set = self._run_main(self.BASE_ENV, stats, existing)
+        _, _, mock_set = self._run_main(self.BASE_ENV, (80, 100, 20), existing)
         mock_set.assert_called_once()
         updates = mock_set.call_args[0][2]
         self.assertEqual(updates["26954"], 80.0)   # 80/100 * 100
@@ -207,19 +264,17 @@ class TestMain(unittest.TestCase):
         self.assertEqual(updates["26956"], 20.0)   # new dels
 
     def test_averages_existing_ai_pct(self):
-        stats = self._make_stats(100, 100, 0)
         existing = {"26954": 60.0, "26955": 50.0, "26956": 10.0}
-        _, _, mock_set = self._run_main(self.BASE_ENV, stats, existing)
+        _, _, mock_set = self._run_main(self.BASE_ENV, (100, 100, 0), existing)
         updates = mock_set.call_args[0][2]
         self.assertEqual(updates["26954"], 80.0)   # avg(60, 100)
         self.assertEqual(updates["26955"], 150.0)  # 50 + 100
         self.assertEqual(updates["26956"], 10.0)   # 10 + 0
 
-    def test_stats_called_with_correct_range(self):
-        stats = self._make_stats(50, 100, 5)
+    def test_aggregate_called_with_correct_shas(self):
         existing = {"26954": None, "26955": None, "26956": None}
-        mock_stats, _, _ = self._run_main(self.BASE_ENV, stats, existing)
-        mock_stats.assert_called_once_with("aaa..bbb")
+        mock_agg, _, _ = self._run_main(self.BASE_ENV, (50, 100, 5), existing)
+        mock_agg.assert_called_once_with("aaa", "bbb")
 
 
 # ── dry-run integration mode ──────────────────────────────────────────────────
