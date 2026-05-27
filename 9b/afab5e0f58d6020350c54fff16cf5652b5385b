@@ -1,0 +1,39 @@
+src/mdm/agents/claude_code.rs
+  s_d9d533c8268956::t_77b1d4f3f452e0 386,391,394
+  s_d9d533c8268956::t_e5f4a9524cf892 21
+  s_d9d533c8268956::t_03ef11a1c4734f 48-50,53-54,102,116,252,258-259,266,315,318
+src/commands/flush_metrics_db.rs
+  s_d9d533c8268956::t_6c82cac44eb146 118-119
+src/commands/git_ai_handlers.rs
+  s_d9d533c8268956::t_9f9cf8353b7705 468
+src/otel.rs
+  s_d9d533c8268956::t_f009dc3209edfb 409-410,413,416
+src/commands/install_hooks.rs
+  s_d9d533c8268956::t_d6bf7b3c9e0cef 332
+  s_d9d533c8268956::t_f64115f8b38d05 301,312-313
+src/config.rs
+  s_d9d533c8268956::t_16d40de3c3d7e4 198-199
+  s_d9d533c8268956::t_c68edaa47e5ba8 826,854
+  s_d9d533c8268956::t_6cfdd040761a6d 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9bafab5e0f58d6020350c54fff16cf5652b5385b",
+  "prompts": {},
+  "humans": {
+    "h_aa0d2240983926": {
+      "author": "Sergey Kats <skats@neogov.net>"
+    }
+  },
+  "sessions": {
+    "s_d9d533c8268956": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e50ad162-dba4-4011-bb9f-08d2df7db2f4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>"
+    }
+  }
+}
