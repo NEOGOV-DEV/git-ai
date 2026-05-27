@@ -1,0 +1,39 @@
+name: Jira PR Stats
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  update-jira:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch git-ai notes ref
+        run: git fetch origin refs/notes/ai:refs/notes/ai || true
+
+      - name: Install git-ai
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/NEOGOV-DEV/git-ai/refs/heads/main/install.sh | bash
+          echo "$HOME/.git-ai/bin" >> $GITHUB_PATH
+
+      - name: Send PR stats to Jira
+        env:
+          JIRA_USER:  ${{ secrets.JIRA_USER }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        run: |
+          git-ai ci jira \
+            --pr-title       "${{ github.event.pull_request.title }}" \
+            --base-sha       "${{ github.event.pull_request.base.sha }}" \
+            --head-sha       "${{ github.event.pull_request.merge_commit_sha }}" \
+            --jira-base-url  "https://neogov.jira.com" \
+            --field-ai-pct        "26954" \
+            --field-lines-added   "26955" \
+            --field-lines-deleted "26956"
