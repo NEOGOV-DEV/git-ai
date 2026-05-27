@@ -300,21 +300,13 @@ pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
 
         // Build parallel arrays (index 0 = "all" aggregate, 1+ = per tool/model)
         let mut tool_model_pairs: Vec<String> = vec!["all".to_string()];
-        let mut mixed_vec: Vec<u32> = vec![stats.mixed_additions];
         let mut ai_add_vec: Vec<u32> = vec![stats.ai_additions];
         let mut ai_acc_vec: Vec<u32> = vec![stats.ai_accepted];
-        let mut total_add_vec: Vec<u32> = vec![stats.total_ai_additions];
-        let mut total_del_vec: Vec<u32> = vec![stats.total_ai_deletions];
-        let mut wait_vec: Vec<u64> = vec![stats.time_waiting_for_ai];
 
         for (tool_model, ts) in &stats.tool_model_breakdown {
             tool_model_pairs.push(tool_model.clone());
-            mixed_vec.push(ts.mixed_additions);
             ai_add_vec.push(ts.ai_additions);
             ai_acc_vec.push(ts.ai_accepted);
-            total_add_vec.push(ts.total_ai_additions);
-            total_del_vec.push(ts.total_ai_deletions);
-            wait_vec.push(ts.time_waiting_for_ai);
         }
 
         let values = crate::metrics::CommittedValues::new()
@@ -322,12 +314,8 @@ pub fn run_github_push_metrics(args: &[String]) -> Result<usize, GitAiError> {
             .git_diff_deleted_lines(stats.git_diff_deleted_lines)
             .git_diff_added_lines(stats.git_diff_added_lines)
             .tool_model_pairs(tool_model_pairs)
-            .mixed_additions(mixed_vec)
             .ai_additions(ai_add_vec)
             .ai_accepted(ai_acc_vec)
-            .total_ai_additions(total_add_vec)
-            .total_ai_deletions(total_del_vec)
-            .time_waiting_for_ai(wait_vec)
             .first_checkpoint_ts_null()
             .commit_subject_null()
             .commit_body_null();

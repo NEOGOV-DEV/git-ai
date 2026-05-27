@@ -18,7 +18,7 @@ pub struct ClaudeCodeInstaller;
 
 impl ClaudeCodeInstaller {
     fn settings_path() -> PathBuf {
-        home_dir().join(".claude").join("settings.json")
+        claude_config_dir().join("settings.json")
     }
 
     fn managed_settings_path() -> PathBuf {
@@ -45,60 +45,13 @@ impl ClaudeCodeInstaller {
     }
 }
 
-impl HookInstaller for ClaudeCodeInstaller {
-    fn name(&self) -> &str {
-        "Claude Code"
-    }
-
-    fn id(&self) -> &str {
-        "claude-code"
-    }
-
-    fn check_hooks(&self, _params: &HookInstallerParams) -> Result<HookCheckResult, GitAiError> {
-        let has_binary = binary_exists("claude");
-        let has_dotfiles = home_dir().join(".claude").exists();
-
-        if !has_binary && !has_dotfiles {
-            return Ok(HookCheckResult {
-                tool_installed: false,
-                hooks_installed: false,
-                hooks_up_to_date: false,
-            });
-        }
-
-        // If we have the binary, check version
-        if has_binary
-            && let Ok(version_str) = get_binary_version("claude")
-            && let Some(version) = parse_version(&version_str)
-            && !version_meets_requirement(version, MIN_CLAUDE_VERSION)
-        {
-            return Err(GitAiError::Generic(format!(
-                "Claude Code version {}.{} detected, but minimum version {}.{} is required",
-                version.0, version.1, MIN_CLAUDE_VERSION.0, MIN_CLAUDE_VERSION.1
-            )));
-        }
-
-        // Check if hooks are installed
-        let settings_path = Self::settings_path();
-        if !settings_path.exists() {
-            return Ok(HookCheckResult {
-                tool_installed: true,
-                hooks_installed: false,
-                hooks_up_to_date: false,
-            });
-        }
-
-        let raw = fs::read_to_string(&settings_path)?;
-        let content = raw.strip_prefix('\u{FEFF}').unwrap_or(&raw);
-        let existing: Value = serde_json::from_str(content).unwrap_or_else(|_| json!({}));
-
-        // Check if our hooks are installed
-        let has_hooks = existing
+impl ClaudeCodeInstaller {
+    fn hook_status(existing: &Value) -> (bool, bool) {
+        let Some(blocks) = existing
             .get("hooks")
             .and_then(|h| h.get("PreToolUse"))
-            .and_then(|v| v.as_array());
-
-        let Some(blocks) = pre_tool_blocks else {
+            .and_then(|v| v.as_array())
+        else {
             return (false, false);
         };
 
@@ -141,17 +94,12 @@ impl HookInstaller for ClaudeCodeInstaller {
         params: &HookInstallerParams,
         dry_run: bool,
     ) -> Result<Option<String>, GitAiError> {
-        let settings_path = Self::resolve_settings_path(params);
-
-        // Ensure directory exists
         if let Some(dir) = settings_path.parent() {
             fs::create_dir_all(dir)?;
         }
 
-        // Read existing content as string, stripping UTF-8 BOM if present
-        // (Claude Code on Windows or some editors may write a BOM-prefixed settings.json)
         let existing_content = if settings_path.exists() {
-            let raw = fs::read_to_string(&settings_path)?;
+            let raw = fs::read_to_string(settings_path)?;
             raw.strip_prefix('\u{FEFF}')
                 .map(String::from)
                 .unwrap_or(raw)
@@ -165,10 +113,7 @@ impl HookInstaller for ClaudeCodeInstaller {
             serde_json::from_str(&existing_content)?
         };
 
-        // Build commands with absolute path
-        // On Windows, Claude Code runs hooks in git bash shell, so we need
-        // paths in MSYS/MinGW format (e.g. /c/Users/... instead of C:\Users\...)
-        let binary_path_str = to_git_bash_path(&params.binary_path);
+        let binary_path_str = normalize_windows_path_for_shell(&params.binary_path);
         let pre_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
         let post_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
 
@@ -185,8 +130,6 @@ impl HookInstaller for ClaudeCodeInstaller {
                 .cloned()
                 .unwrap_or_default();
 
-            // Step 1: Strip git-ai from every non-catch-all matcher block (migration).
-            // Track which blocks we emptied so we can remove them below.
             let mut emptied_by_migration = vec![false; hook_type_array.len()];
             for (i, block) in hook_type_array.iter_mut().enumerate() {
                 let is_catch_all = block
@@ -209,7 +152,6 @@ impl HookInstaller for ClaudeCodeInstaller {
                     }
                 }
             }
-            // Remove blocks that we emptied; leave pre-existing empty blocks alone.
             let mut i = 0;
             hook_type_array.retain(|_| {
                 let remove = emptied_by_migration[i];
@@ -217,7 +159,6 @@ impl HookInstaller for ClaudeCodeInstaller {
                 !remove
             });
 
-            // Step 2: Find or create the "*" catch-all matcher block.
             let catch_all_idx = hook_type_array
                 .iter()
                 .position(|b| {
@@ -234,7 +175,6 @@ impl HookInstaller for ClaudeCodeInstaller {
                     hook_type_array.len() - 1
                 });
 
-            // Step 3: Ensure exactly one git-ai command in the catch-all block.
             let mut hooks_array = hook_type_array[catch_all_idx]
                 .get("hooks")
                 .and_then(|h| h.as_array())
@@ -264,7 +204,6 @@ impl HookInstaller for ClaudeCodeInstaller {
                             "command": desired_cmd
                         });
                     }
-                    // Remove duplicates: keep the first, drop any subsequent git-ai entries.
                     let keep_idx = idx;
                     let mut current_idx = 0;
                     hooks_array.retain(|hook| {
@@ -310,24 +249,21 @@ impl HookInstaller for ClaudeCodeInstaller {
         let diff_output = generate_diff(settings_path, &existing_content, &new_content);
 
         if !dry_run {
-            write_atomic(settings_path, new_content.as_bytes())?;
+            write_atomic(&settings_path, new_content.as_bytes())?;
         }
 
         Ok(Some(diff_output))
     }
 
-    fn uninstall_hooks(
-        &self,
-        params: &HookInstallerParams,
+    fn uninstall_hooks_at(
+        settings_path: &Path,
         dry_run: bool,
     ) -> Result<Option<String>, GitAiError> {
-        let settings_path = Self::resolve_settings_path(params);
-
         if !settings_path.exists() {
             return Ok(None);
         }
 
-        let raw = fs::read_to_string(&settings_path)?;
+        let raw = fs::read_to_string(settings_path)?;
         let existing_content = raw
             .strip_prefix('\u{FEFF}')
             .map(String::from)
@@ -376,10 +312,10 @@ impl HookInstaller for ClaudeCodeInstaller {
         }
 
         let new_content = serde_json::to_string_pretty(&merged)?;
-        let diff_output = generate_diff(settings_path, &existing_content, &new_content);
+        let diff_output = generate_diff(&settings_path, &existing_content, &new_content);
 
         if !dry_run {
-            write_atomic(settings_path, new_content.as_bytes())?;
+            write_atomic(&settings_path, new_content.as_bytes())?;
         }
 
         Ok(Some(diff_output))
@@ -447,15 +383,15 @@ impl HookInstaller for ClaudeCodeInstaller {
         params: &HookInstallerParams,
         dry_run: bool,
     ) -> Result<Option<String>, GitAiError> {
-        Self::install_hooks_at(&Self::settings_path(), params, dry_run)
+        Self::install_hooks_at(&Self::resolve_settings_path(params), params, dry_run)
     }
 
     fn uninstall_hooks(
         &self,
-        _params: &HookInstallerParams,
+        params: &HookInstallerParams,
         dry_run: bool,
     ) -> Result<Option<String>, GitAiError> {
-        Self::uninstall_hooks_at(&Self::settings_path(), dry_run)
+        Self::uninstall_hooks_at(&Self::resolve_settings_path(params), dry_run)
     }
 }
 

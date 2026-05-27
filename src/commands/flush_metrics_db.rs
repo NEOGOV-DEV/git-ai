@@ -5,7 +5,6 @@
 use crate::api::{ApiClient, ApiContext, upload_metrics_with_retry};
 use crate::metrics::db::MetricsDatabase;
 use crate::metrics::{MetricEvent, MetricsBatch};
-use crate::utils::debug_log;
 
 /// Max events per batch upload
 const MAX_BATCH_SIZE: usize = 1000;
@@ -116,8 +115,8 @@ pub fn handle_flush_metrics_db(_args: &[String]) {
                 let bearer_token = otel_config.otel_bearer_token();
                 match crate::otel::send_to_otel(otel_endpoint, bearer_token, &metrics_batch.events)
                 {
-                    Ok(()) => debug_log(&format!("  ✓ otel - forwarded batch to {}", otel_endpoint)),
-                    Err(e) => debug_log(&format!("  ✗ otel - {}", e)),
+                    Ok(()) => {}
+                    Err(_) => {}
                 }
             }
         }

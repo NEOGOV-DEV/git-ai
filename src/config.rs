@@ -120,6 +120,7 @@ pub struct Config {
     otel_endpoint: Option<String>,
     #[serde(serialize_with = "serialize_masked_api_key")]
     otel_bearer_token: Option<String>,
+    notes_backend: NotesBackendConfig,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize)]
@@ -194,6 +195,8 @@ pub struct FileConfig {
     pub otel_endpoint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub otel_bearer_token: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes_backend: Option<NotesBackendConfig>,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -820,6 +823,7 @@ fn build_config() -> Config {
             git_ai_hooks: git_ai_hooks.clone(),
             otel_endpoint: otel_endpoint.clone(),
             otel_bearer_token: otel_bearer_token.clone(),
+            notes_backend: notes_backend.clone(),
         };
         apply_test_config_patch(&mut config);
         config
@@ -847,6 +851,7 @@ fn build_config() -> Config {
         git_ai_hooks,
         otel_endpoint,
         otel_bearer_token,
+        notes_backend,
     }
 }
 

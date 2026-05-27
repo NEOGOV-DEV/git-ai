@@ -406,15 +406,14 @@ pub fn send_to_otel(
 
     let url = format!("{}/v1/metrics", endpoint.trim_end_matches('/'));
 
-    let mut request = minreq::post(&url).with_header("Content-Type", "application/json");
+    let agent = crate::http::build_agent(Some(30));
+    let mut request = agent.post(&url).set("Content-Type", "application/json");
 
     if let Some(token) = bearer_token {
-        request = request.with_header("Authorization", format!("Bearer {}", token));
+        request = request.set("Authorization", &format!("Bearer {}", token));
     }
 
-    let response = request
-        .with_body(json)
-        .send()
+    let response = crate::http::send_with_body(request, &json)
         .map_err(|e| format!("otel: HTTP request to {} failed: {}", url, e))?;
 
     let status = response.status_code;

@@ -298,6 +298,7 @@ pub fn run(args: &[String]) -> Result<HashMap<String, String>, GitAiError> {
     let mut dry_run = false;
     let mut verbose = false;
     let mut managed = false;
+    let mut install_skills = false;
     for arg in args {
         if arg == "--dry-run" || arg == "--dry-run=true" {
             dry_run = true;
@@ -307,6 +308,9 @@ pub fn run(args: &[String]) -> Result<HashMap<String, String>, GitAiError> {
         }
         if arg == "--managed" {
             managed = true;
+        }
+        if arg == "--skills" {
+            install_skills = true;
         }
     }
 
@@ -325,7 +329,7 @@ pub fn run(args: &[String]) -> Result<HashMap<String, String>, GitAiError> {
 
     // Get absolute path to the current binary
     let binary_path = get_current_binary_path()?;
-    persist_install_api_base_config(&binary_path, dry_run)?;
+    persist_install_config(&binary_path, dry_run)?;
     let params = HookInstallerParams {
         binary_path,
         managed,
