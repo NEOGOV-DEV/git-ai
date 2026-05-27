@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Fetch the full history so git notes are accessible.
           # git-ai stores notes under refs/notes/ai; fetch that ref explicitly.
