@@ -1,0 +1,19 @@
+src/ci/jira.rs
+  s_0504c3277e9afa::t_030b51ace4184b 267-579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "598c4cd6042295134e2082092f1b5c3ec71ff4c7",
+  "prompts": {},
+  "sessions": {
+    "s_0504c3277e9afa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42c47d74-85ff-4953-a745-771f020ecc44",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>"
+    }
+  }
+}
