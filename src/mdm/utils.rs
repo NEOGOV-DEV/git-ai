@@ -692,6 +692,27 @@ pub fn normalize_windows_path_for_shell(path: &Path) -> String {
     s.into_owned()
 }
 
+/// Convert a path to git-bash/MSYS2 format for use in Claude Code hook commands.
+///
+/// On Windows, Claude Code runs hooks in a git-bash shell, so paths must be in MSYS2
+/// format (e.g. `C:\Users\...` → `/c/Users/...`). On Unix, paths are returned as-is.
+pub fn to_git_bash_path(path: &Path) -> String {
+    let s = path.to_string_lossy();
+    let bytes = s.as_bytes();
+    // Match a Windows absolute path like "C:\..." or "C:/..."
+    if bytes.len() >= 3
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && (bytes[2] == b'\\' || bytes[2] == b'/')
+    {
+        let drive_letter = (bytes[0] as char).to_ascii_lowercase();
+        let rest = &s[2..]; // skip "C:"
+        let rest_fwd = rest.replace('\\', "/");
+        return format!("/{}{}", drive_letter, rest_fwd);
+    }
+    s.into_owned()
+}
+
 /// Get the absolute path to the currently running binary
 pub fn get_current_binary_path() -> Result<PathBuf, GitAiError> {
     let path = std::env::current_exe()?;
