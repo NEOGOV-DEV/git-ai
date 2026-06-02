@@ -107,8 +107,17 @@ def jira_set_fields(base_url: str, issue_key: str, updates: dict[str, float],
 # ── Jira ID extraction ────────────────────────────────────────────────────────
 
 def extract_jira_id(pr_title: str) -> str | None:
-    """Match 'NN-123 title', 'NN-123: title', 'NN-123 - title' at start of title."""
-    m = re.match(r"^([A-Z]+-\d+)[\s:\-]", pr_title.strip())
+    """Match Jira ticket ID in PR title.
+
+    Supported forms:
+      - Start of title followed by space, dash, or pipe: 'NNN-123 title', 'NNN-123 - title', 'NNN-123 | title'
+      - Anywhere in title inside parentheses: 'some title (NNN-123)'
+    """
+    title = pr_title.strip()
+    m = re.match(r"^([A-Z]+-\d+)[\s\-|]", title)
+    if m:
+        return m.group(1)
+    m = re.search(r"\(([A-Z]+-\d+)\)", title)
     return m.group(1) if m else None
 
 

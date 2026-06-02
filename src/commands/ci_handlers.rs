@@ -4,6 +4,7 @@ use crate::ci::github::{
     run_github_push_metrics,
 };
 use crate::ci::gitlab::{get_gitlab_ci_context, print_gitlab_ci_yaml};
+use crate::ci::jira::{print_jira_help_and_exit, run_jira};
 use crate::git::repository::find_repository_in_path;
 
 /// Print a human-readable message for a CiRunResult
@@ -44,6 +45,12 @@ pub fn handle_ci(args: &[String]) {
         }
         "local" => {
             handle_ci_local(&args[1..]);
+        }
+        "jira" => {
+            if args[1..].iter().any(|a| a == "--help" || a == "-h") {
+                print_jira_help_and_exit();
+            }
+            run_jira(&args[1..]);
         }
         _ => {
             eprintln!("Unknown ci subcommand: {}", args[0]);
@@ -334,6 +341,11 @@ fn print_ci_help_and_exit() -> ! {
     eprintln!(
         "                            [--skip-fetch-notes] [--skip-fetch-base] [--skip-fetch] [--skip-push]"
     );
+    eprintln!("  jira             Send PR AI attribution stats to a Jira ticket");
+    eprintln!("                   --pr-title <title> --base-sha <sha> --head-sha <sha>");
+    eprintln!("                   --jira-base-url <url> --field-ai-pct <id>");
+    eprintln!("                   --field-lines-added <id> --field-lines-deleted <id>");
+    eprintln!("                   Env: JIRA_USER, JIRA_TOKEN");
     std::process::exit(1);
 }
 
