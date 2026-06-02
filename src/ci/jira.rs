@@ -264,6 +264,319 @@ pub fn run_jira(args: &[String]) {
     );
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── basic_auth_header ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_basic_auth_header_encodes_correctly() {
+        let header = basic_auth_header("user@example.com", "mytoken");
+        let expected = base64::engine::general_purpose::STANDARD
+            .encode("user@example.com:mytoken");
+        assert_eq!(header, format!("Basic {expected}"));
+    }
+
+    #[test]
+    fn test_basic_auth_header_empty_credentials() {
+        let header = basic_auth_header("", "");
+        let expected = base64::engine::general_purpose::STANDARD.encode(":");
+        assert_eq!(header, format!("Basic {expected}"));
+    }
+
+    // ── extract_jira_id ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_jira_id_space_separator() {
+        assert_eq!(
+            extract_jira_id("ABC-123 my change"),
+            Some("ABC-123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_jira_id_dash_separator() {
+        assert_eq!(
+            extract_jira_id("ABC-123-my-change"),
+            Some("ABC-123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_jira_id_pipe_separator() {
+        assert_eq!(
+            extract_jira_id("ABC-123| some title"),
+            Some("ABC-123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_jira_id_leading_whitespace() {
+        assert_eq!(
+            extract_jira_id("  PROJ-42 refactor auth"),
+            Some("PROJ-42".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_jira_id_multi_letter_project() {
+        assert_eq!(
+            extract_jira_id("MYPROJECT-9999 large number"),
+            Some("MYPROJECT-9999".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_jira_id_no_separator_returns_none() {
+        // Key present but not followed by [\s\-|]
+        assert_eq!(extract_jira_id("ABC-123"), None);
+    }
+
+    #[test]
+    fn test_extract_jira_id_colon_separator_returns_none() {
+        // Colon is not in the character class
+        assert_eq!(extract_jira_id("ABC-123: some title"), None);
+    }
+
+    #[test]
+    fn test_extract_jira_id_lowercase_returns_none() {
+        assert_eq!(extract_jira_id("abc-123 some title"), None);
+    }
+
+    #[test]
+    fn test_extract_jira_id_not_at_start_returns_none() {
+        assert_eq!(extract_jira_id("feat: ABC-123 something"), None);
+    }
+
+    #[test]
+    fn test_extract_jira_id_no_jira_key_returns_none() {
+        assert_eq!(extract_jira_id("just a plain PR title"), None);
+    }
+
+    #[test]
+    fn test_extract_jira_id_empty_string_returns_none() {
+        assert_eq!(extract_jira_id(""), None);
+    }
+
+    // ── JiraIssueFields deserialization ──────────────────────────────────────
+
+    #[test]
+    fn test_jira_issue_fields_deserializes_numeric_fields() {
+        let json = r#"{"fields":{"customfield_10001":42.5,"customfield_10002":100.0}}"#;
+        let parsed: JiraIssueFields = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            parsed.fields.get("customfield_10001").and_then(|v| v.as_f64()),
+            Some(42.5)
+        );
+        assert_eq!(
+            parsed.fields.get("customfield_10002").and_then(|v| v.as_f64()),
+            Some(100.0)
+        );
+    }
+
+    #[test]
+    fn test_jira_issue_fields_handles_null_field() {
+        let json = r#"{"fields":{"customfield_10001":null}}"#;
+        let parsed: JiraIssueFields = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            parsed.fields.get("customfield_10001").and_then(|v| v.as_f64()),
+            None
+        );
+    }
+
+    #[test]
+    fn test_jira_issue_fields_missing_key_returns_none() {
+        let json = r#"{"fields":{}}"#;
+        let parsed: JiraIssueFields = serde_json::from_str(json).unwrap();
+        assert!(parsed.fields.get("customfield_99999").is_none());
+    }
+
+    // ── jira_get_fields (HTTP) ───────────────────────────────────────────────
+
+    fn plain_agent() -> ureq::Agent {
+        ureq::AgentBuilder::new().build()
+    }
+
+    #[test]
+    fn test_jira_get_fields_success() {
+        let mut server = mockito::Server::new();
+        let body = serde_json::json!({
+            "fields": {
+                "customfield_10001": 75.0,
+                "customfield_10002": 200.0,
+                "customfield_10003": null
+            }
+        })
+        .to_string();
+        let _mock = server
+            .mock("GET", mockito::Matcher::Regex(r"^/rest/api/3/issue/".to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(&body)
+            .create();
+
+        let agent = plain_agent();
+        let result = jira_get_fields(
+            &agent,
+            &server.url(),
+            "TEST-1",
+            &["10001", "10002", "10003"],
+            "Basic dGVzdA==",
+        );
+        let fields = result.unwrap();
+        assert_eq!(fields.get("10001").copied().flatten(), Some(75.0));
+        assert_eq!(fields.get("10002").copied().flatten(), Some(200.0));
+        assert_eq!(fields.get("10003").copied().flatten(), None);
+    }
+
+    #[test]
+    fn test_jira_get_fields_non_200_returns_error() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("GET", mockito::Matcher::Regex(r"^/rest/api/3/issue/".to_string()))
+            .with_status(404)
+            .with_body("Not Found")
+            .create();
+
+        let agent = plain_agent();
+        let result = jira_get_fields(
+            &agent,
+            &server.url(),
+            "TEST-1",
+            &["10001"],
+            "Basic dGVzdA==",
+        );
+        assert!(result.is_err());
+        let msg = result.unwrap_err();
+        assert!(msg.contains("404"), "expected 404 in: {msg}");
+    }
+
+    #[test]
+    fn test_jira_get_fields_missing_field_id_mapped_to_none() {
+        let mut server = mockito::Server::new();
+        // Response only has customfield_10001; customfield_10002 is absent
+        let body = serde_json::json!({
+            "fields": { "customfield_10001": 50.0 }
+        })
+        .to_string();
+        let _mock = server
+            .mock("GET", mockito::Matcher::Regex(r"^/rest/api/3/issue/".to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(&body)
+            .create();
+
+        let agent = plain_agent();
+        let result = jira_get_fields(
+            &agent,
+            &server.url(),
+            "TEST-1",
+            &["10001", "10002"],
+            "Basic dGVzdA==",
+        )
+        .unwrap();
+        assert_eq!(result.get("10001").copied().flatten(), Some(50.0));
+        assert_eq!(result.get("10002").copied().flatten(), None);
+    }
+
+    // ── jira_set_fields (HTTP) ───────────────────────────────────────────────
+
+    #[test]
+    fn test_jira_set_fields_success_on_204() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("PUT", mockito::Matcher::Regex(r"^/rest/api/3/issue/".to_string()))
+            .with_status(204)
+            .create();
+
+        let agent = plain_agent();
+        let mut updates = std::collections::HashMap::new();
+        updates.insert("10001".to_string(), 88.0_f64);
+
+        let result = jira_set_fields(
+            &agent,
+            &server.url(),
+            "TEST-1",
+            &updates,
+            "Basic dGVzdA==",
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_jira_set_fields_success_on_200() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("PUT", mockito::Matcher::Regex(r"^/rest/api/3/issue/".to_string()))
+            .with_status(200)
+            .create();
+
+        let agent = plain_agent();
+        let mut updates = std::collections::HashMap::new();
+        updates.insert("10001".to_string(), 50.0_f64);
+
+        let result = jira_set_fields(
+            &agent,
+            &server.url(),
+            "TEST-1",
+            &updates,
+            "Basic dGVzdA==",
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_jira_set_fields_non_2xx_returns_error() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("PUT", mockito::Matcher::Regex(r"^/rest/api/3/issue/".to_string()))
+            .with_status(403)
+            .with_body("Forbidden")
+            .create();
+
+        let agent = plain_agent();
+        let mut updates = std::collections::HashMap::new();
+        updates.insert("10001".to_string(), 10.0_f64);
+
+        let result = jira_set_fields(
+            &agent,
+            &server.url(),
+            "TEST-1",
+            &updates,
+            "Basic dGVzdA==",
+        );
+        assert!(result.is_err());
+        let msg = result.unwrap_err();
+        assert!(msg.contains("403"), "expected 403 in: {msg}");
+    }
+
+    #[test]
+    fn test_jira_set_fields_sends_customfield_keys() {
+        let mut server = mockito::Server::new();
+        let _mock = server
+            .mock("PUT", mockito::Matcher::Regex(r"^/rest/api/3/issue/".to_string()))
+            .with_status(204)
+            .match_body(mockito::Matcher::PartialJsonString(
+                r#"{"fields":{"customfield_10001":42.0}}"#.to_string(),
+            ))
+            .create();
+
+        let agent = plain_agent();
+        let mut updates = std::collections::HashMap::new();
+        updates.insert("10001".to_string(), 42.0_f64);
+
+        let result = jira_set_fields(
+            &agent,
+            &server.url(),
+            "TEST-1",
+            &updates,
+            "Basic dGVzdA==",
+        );
+        assert!(result.is_ok());
+    }
+}
+
 pub fn print_jira_help_and_exit() -> ! {
     eprintln!("git-ai ci jira - Send PR AI attribution stats to a Jira ticket");
     eprintln!();
