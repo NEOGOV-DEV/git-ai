@@ -521,6 +521,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer.install_hooks(&params, false).unwrap();
@@ -759,6 +760,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer.uninstall_hooks(&params, false).unwrap();
@@ -791,6 +793,7 @@ mod tests {
             let installer = GitHubCopilotInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let result = installer.check_hooks(&params).unwrap();

@@ -392,6 +392,7 @@ mod tests {
     fn params() -> HookInstallerParams {
         HookInstallerParams {
             binary_path: binary_path(),
+            ..Default::default()
         }
     }
 

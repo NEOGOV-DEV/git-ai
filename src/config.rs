@@ -1320,6 +1320,7 @@ mod tests {
             git_ai_hooks: HashMap::new(),
             otel_endpoint: None,
             otel_bearer_token: None,
+            notes_backend: NotesBackendConfig::default(),
         }
     }
 
@@ -1431,6 +1432,7 @@ mod tests {
             git_ai_hooks: HashMap::new(),
             otel_endpoint: None,
             otel_bearer_token: None,
+            notes_backend: NotesBackendConfig::default(),
         }
     }
 
@@ -1551,6 +1553,7 @@ mod tests {
             git_ai_hooks: HashMap::new(),
             otel_endpoint: None,
             otel_bearer_token: None,
+            notes_backend: NotesBackendConfig::default(),
         }
     }
 

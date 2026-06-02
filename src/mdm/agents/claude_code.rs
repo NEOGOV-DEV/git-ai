@@ -2,8 +2,8 @@ use crate::error::GitAiError;
 use crate::mdm::hook_installer::{HookCheckResult, HookInstaller, HookInstallerParams};
 use crate::mdm::utils::{
     MIN_CLAUDE_VERSION, binary_exists, claude_config_dir, generate_diff, get_binary_version,
-    is_git_ai_checkpoint_command, normalize_windows_path_for_shell, parse_version,
-    version_meets_requirement, write_atomic,
+    is_git_ai_checkpoint_command, parse_version, to_git_bash_path, version_meets_requirement,
+    write_atomic,
 };
 use serde_json::{Value, json};
 use std::fs;
@@ -113,7 +113,7 @@ impl ClaudeCodeInstaller {
             serde_json::from_str(&existing_content)?
         };
 
-        let binary_path_str = normalize_windows_path_for_shell(&params.binary_path);
+        let binary_path_str = to_git_bash_path(&params.binary_path);
         let pre_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_PRE_TOOL_CMD);
         let post_tool_cmd = format!("\"{}\" {}", binary_path_str, CLAUDE_POST_TOOL_CMD);
 
@@ -398,7 +398,7 @@ impl HookInstaller for ClaudeCodeInstaller {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mdm::utils::{clean_path, normalize_windows_path_for_shell};
+    use crate::mdm::utils::{clean_path, to_git_bash_path};
     use std::fs;
     use tempfile::TempDir;
 
@@ -416,11 +416,16 @@ mod tests {
     fn params() -> HookInstallerParams {
         HookInstallerParams {
             binary_path: binary_path(),
+            ..Default::default()
         }
     }
 
+    fn create_test_binary_path() -> PathBuf {
+        PathBuf::from("/usr/local/bin/git-ai")
+    }
+
     fn expected_cmd() -> String {
-        format!("{} {}", binary_path().display(), CLAUDE_PRE_TOOL_CMD)
+        format!("\"{}\" {}", binary_path().display(), CLAUDE_PRE_TOOL_CMD)
     }
 
     fn read_settings(path: &Path) -> Value {

@@ -330,6 +330,7 @@ mod tests {
                 .install_hooks(
                     &HookInstallerParams {
                         binary_path: create_test_binary_path(),
+                        ..Default::default()
                     },
                     false,
                 )
@@ -382,6 +383,7 @@ mod tests {
                 .install_hooks(
                     &HookInstallerParams {
                         binary_path: create_test_binary_path(),
+                        ..Default::default()
                     },
                     false,
                 )
@@ -444,6 +446,7 @@ mod tests {
                 .uninstall_hooks(
                     &HookInstallerParams {
                         binary_path: create_test_binary_path(),
+                        ..Default::default()
                     },
                     false,
                 )
@@ -496,6 +499,7 @@ mod tests {
             let result = installer
                 .check_hooks(&HookInstallerParams {
                     binary_path: create_test_binary_path(),
+                    ..Default::default()
                 })
                 .unwrap();
 
@@ -538,6 +542,7 @@ mod tests {
                 .install_hooks(
                     &HookInstallerParams {
                         binary_path: create_test_binary_path(),
+                        ..Default::default()
                     },
                     false,
                 )

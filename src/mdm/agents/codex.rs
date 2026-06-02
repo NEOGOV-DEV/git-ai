@@ -1298,6 +1298,7 @@ notify = ["/usr/local/bin/git-ai", "checkpoint", "codex", "--hook-input"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -1344,6 +1345,7 @@ notify = ["/Users/svarlamov/.git-ai/bin/git-ai", "checkpoint", "codex", "--via-c
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -1378,6 +1380,7 @@ notify = ["notify-send", "Codex finished"]
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -1741,6 +1744,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let diff = installer
@@ -1772,6 +1776,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let result = installer.install_hooks(&params, false).unwrap();
@@ -1830,6 +1835,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             let check = installer
@@ -1925,6 +1931,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -1973,6 +1980,7 @@ codex_hooks = true
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -2026,6 +2034,7 @@ trusted_hash = "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef123
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
@@ -2067,6 +2076,7 @@ trusted_hash = "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef123
             let installer = CodexInstaller;
             let params = HookInstallerParams {
                 binary_path: test_binary_path(),
+                ..Default::default()
             };
 
             installer
