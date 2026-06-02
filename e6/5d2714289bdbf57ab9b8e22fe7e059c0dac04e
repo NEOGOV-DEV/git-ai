@@ -1,0 +1,40 @@
+src/config.rs
+  s_8c01e8fff86280::t_d3eb6d5a4d5335 1556
+  s_8c01e8fff86280::t_3b5cee0fc184dc 1435
+  s_8c01e8fff86280::t_42a5438df14ef5 1323
+src/mdm/agents/claude_code.rs
+  s_8c01e8fff86280::t_69971594bec804 419,423-424
+  s_8c01e8fff86280::t_7649b6b92af1e5 401
+  s_8c01e8fff86280::t_f8f06835dbd0de 428
+  s_8c01e8fff86280::t_2fc92d14caca02 5-6
+  s_8c01e8fff86280::t_bb32941cf4efbd 116
+src/mdm/agents/gemini.rs
+  s_8c01e8fff86280::t_c03935f9e81fe1 395
+src/mdm/agents/codex.rs
+  s_8c01e8fff86280::t_c8922ac2784451 1301,1348,1383,1747,1779,1838,1934,1983,2037,2079
+src/mdm/utils.rs
+  s_8c01e8fff86280::t_8e017cbfdf6f8c 695-715
+src/mdm/agents/firebender.rs
+  s_8c01e8fff86280::t_0ae90dfc44aff7 333,386,449,545
+  s_8c01e8fff86280::t_18e4db68616c42 502
+src/mdm/agents/github_copilot.rs
+  s_8c01e8fff86280::t_8c2af9c9ea7403 524,763,796
+src/mdm/agents/droid.rs
+  s_8c01e8fff86280::t_52cdafd18d6a0d 385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e65d2714289bdbf57ab9b8e22fe7e059c0dac04e",
+  "prompts": {},
+  "sessions": {
+    "s_8c01e8fff86280": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ae5b0e9-de43-4ac7-b102-33806b1265d6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Sergey Kats <skats@neogov.net>"
+    }
+  }
+}
